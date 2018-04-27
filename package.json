@@ -1,0 +1,28 @@
+{
+  "name": "fairwallet-lib",
+  "version": "0.0.1",
+  "description": "Wallet module for the Fairwallet app",
+  "main": "main.js",
+  "repository": "git@gitlab.com:altruist-projects/fairwallet-lib.git",
+  "author": "Dani Guardiola",
+  "license": "MIT",
+  "devDependencies": {
+    "chai": "^4.1.2",
+    "chai-as-promised": "^7.1.1",
+    "mocha": "^5.1.1",
+    "nyc": "^11.7.1",
+    "standard": "^11.0.1"
+  },
+  "scripts": {
+    "lint": "standard",
+    "fix": "standard --fix",
+    "test": "nyc --check-coverage --lines 0 mocha",
+    "test-watch": "mocha --watch",
+    "coverage": "nyc check-coverage --lines 90",
+    "coverage-report": "nyc report --reporter html --report-dir coverage"
+  },
+  "dependencies": {
+    "bitcore-mnemonic": "^1.5.0",
+    "joi": "^13.2.0"
+  }
+}
