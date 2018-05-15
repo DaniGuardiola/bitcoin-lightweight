@@ -9,8 +9,13 @@
   "devDependencies": {
     "chai": "^4.1.2",
     "chai-as-promised": "^7.1.1",
+    "docco": "^0.8.0",
+    "documentation": "^6.3.2",
     "mocha": "^5.1.1",
+    "npm-check": "^5.7.0",
+    "nsp": "^3.2.1",
     "nyc": "^11.7.1",
+    "pre-commit": "^1.2.2",
     "standard": "^11.0.1"
   },
   "scripts": {
@@ -18,10 +23,25 @@
     "fix": "standard --fix",
     "test": "nyc --check-coverage --lines 0 mocha",
     "test-watch": "mocha --watch",
+    "check-security": "nsp check",
+    "check-deps": "npm-check -p",
     "coverage": "nyc check-coverage --lines 90",
-    "coverage-report": "nyc report --reporter html --report-dir coverage"
+    "coverage-report": "nyc report --reporter html --report-dir coverage",
+    "code-doc": "docco --output docs *.js",
+    "api-doc": "documentation readme main.js src/*.js -s 'API reference'",
+    "docs": "yarn -s code-doc && yarn -s api-doc",
+    "git-add-docs": "git add docs"
   },
+  "pre-commit": [
+    "test",
+    "lint",
+    "check-deps",
+    "docs",
+    "git-add-docs",
+    "check-security"
+  ],
   "dependencies": {
+    "bitcore-lib": "^0.15.0",
     "bitcore-mnemonic": "^1.5.0",
     "joi": "^13.2.0"
   }

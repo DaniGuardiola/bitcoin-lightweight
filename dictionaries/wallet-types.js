@@ -7,7 +7,7 @@ const walletTypes = {}
 const BIP39_SEED_SCHEMA = Joi.string().bitcoreMnemonic()
 
 walletTypes.bitcoin_electrum_BIP39 = {
-  currency: 'FAIR',
+  currency: 'BTC',
   secretType: 'BIP39',
 
   // secret can be in two formats:
@@ -26,9 +26,9 @@ walletTypes.bitcoin_electrum_BIP39 = {
 // bitcoin electrum BIP32 (Hierarchical Deterministic Keys)
 
 walletTypes.bitcoin_electrum_BIP32 = {
-  currency: 'FAIR',
+  currency: 'BTC',
   secretType: 'BIP32',
-  secretSchema: null // TODO, TODO: validate HD key?
+  secretSchema: Joi.string().HDPrivateKey().required() // TODO, TODO: validate HD key?
 }
 
 module.exports = walletTypes

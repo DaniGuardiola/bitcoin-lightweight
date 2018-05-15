@@ -4,3 +4,4 @@ yarn-error.log
 
 # nyc
 .nyc_output
+coverage

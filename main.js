@@ -28,8 +28,8 @@ module.exports = class Wallet {
    * @param  {object} options Options for wallet creation
    * @return {Wallet}         Wallet instance
    */
-  static async create (type, options = {}) {
-    const { secret } = await createWallet[type](options)
+  static create (type, options = {}) {
+    const { secret } = createWallet[type](options)
     return new Wallet(type, secret)
   }
 
