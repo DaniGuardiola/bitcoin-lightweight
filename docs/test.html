@@ -142,8 +142,8 @@ describe(<span class="hljs-string">'Wallet'</span>, () =&gt; {
     it(<span class="hljs-string">'derives the correct HD private key from mnemonic'</span>, <span class="hljs-keyword">async</span> () =&gt; {
       <span class="hljs-keyword">const</span> wallet = <span class="hljs-keyword">new</span> Wallet(TYPE_ID, CORRECT_SECRET_SEED)
       <span class="hljs-keyword">await</span> wallet._ensureInitialized()
-      wallet._hdPrivateKey.constructor.name.should.equal(<span class="hljs-string">'HDPrivateKey'</span>)
-      wallet._hdPrivateKey.toString().should.equal(DERIVED_HD_KEY.toString())
+      wallet._rootHDPrivateKey.constructor.name.should.equal(<span class="hljs-string">'HDPrivateKey'</span>)
+      wallet._rootHDPrivateKey.toString().should.equal(DERIVED_HD_KEY.toString())
     })
 
     it(<span class="hljs-string">'derives the correct HD private key from mnemonic and passphrase'</span>, <span class="hljs-keyword">async</span> () =&gt; {
@@ -152,8 +152,8 @@ describe(<span class="hljs-string">'Wallet'</span>, () =&gt; {
         <span class="hljs-attr">passphrase</span>: PASSPHRASE
       })
       <span class="hljs-keyword">await</span> wallet._ensureInitialized()
-      wallet._hdPrivateKey.constructor.name.should.equal(<span class="hljs-string">'HDPrivateKey'</span>)
-      wallet._hdPrivateKey.toString().should.equal(DERIVED_HD_KEY_WITH_PASSPHRASE.toString())
+      wallet._rootHDPrivateKey.constructor.name.should.equal(<span class="hljs-string">'HDPrivateKey'</span>)
+      wallet._rootHDPrivateKey.toString().should.equal(DERIVED_HD_KEY_WITH_PASSPHRASE.toString())
     })
   })
 
@@ -177,8 +177,8 @@ describe(<span class="hljs-string">'Wallet'</span>, () =&gt; {
     it(<span class="hljs-string">'stores the correct HD private key'</span>, <span class="hljs-keyword">async</span> () =&gt; {
       <span class="hljs-keyword">const</span> wallet = <span class="hljs-keyword">new</span> Wallet(TYPE_ID, CORRECT_SECRET_KEY)
       <span class="hljs-keyword">await</span> wallet._ensureInitialized()
-      wallet._hdPrivateKey.constructor.name.should.equal(<span class="hljs-string">'HDPrivateKey'</span>)
-      wallet._hdPrivateKey.toString().should.equal(CORRECT_SECRET_KEY)
+      wallet._rootHDPrivateKey.constructor.name.should.equal(<span class="hljs-string">'HDPrivateKey'</span>)
+      wallet._rootHDPrivateKey.toString().should.equal(CORRECT_SECRET_KEY)
     })
   })
 })</pre></div></div>

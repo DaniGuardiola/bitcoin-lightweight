@@ -13,6 +13,8 @@ const {
 // constants
 
 const WALLET_TYPE_LIST = Object.keys(WALLET_TYPES)
+const DEFAULT_GAP_LIMIT = 20
+const CHANGE_GAP_LIMIT = 5
 
 /**
  * Abstracts the logic of wallets, supporting multiple types for multiple currencies.
@@ -46,10 +48,12 @@ module.exports = class Wallet {
     // validate and store options
     options = Joi.attempt(options,
       Joi.object({
-        network: Joi.string().valid(['livenet', 'testnet']).default('livenet')
+        network: Joi.string().valid(['livenet', 'testnet']).default('livenet'),
+        gapLimit: Joi.number().integer().positive().max(100).default(DEFAULT_GAP_LIMIT)
       }))
 
     this._network = Networks.get(options.network)
+    this._gapLimit = options.gapLimit
 
     // initialization
     this._initialized = false
@@ -75,21 +79,23 @@ module.exports = class Wallet {
     // TODO: include timeout?
 
     // initialize secret
-    const secretInitialization = {
-      BIP39: () => this._initializeBIP39(),
-      BIP32: () => this._initializeBIP32()
-    }[this._type.secretType]
+    ;({
+      BIP39: () => this._initializeBIP39Secret(),
+      BIP32: () => this._initializeBIP32Secret()
+    })[this._type.secretType]()
 
-    if (!secretInitialization) throw new Error(`Unknown secret protocol "${this._type.secretType}"`)
-
-    secretInitialization()
+    // initialize wallet
+    ;({
+      BIP39: () => this._initializeBIP32Wallet(),
+      BIP32: () => this._initializeBIP32Wallet()
+    })[this._type.secretType]()
 
     // update initialization-related state props
     this._initialized = true
     this._initializationPromise = false
   }
 
-  async _initializeBIP39 () {
+  async _initializeBIP39Secret () {
     const stringFormat = typeof this._secret === 'string'
 
     const seed = stringFormat ? this._secret : this._secret.seed
@@ -97,12 +103,56 @@ module.exports = class Wallet {
 
     // derive and store HD private key from mnemonic
     const mnemonic = new Mnemonic(seed)
-    this._hdPrivateKey = mnemonic
+    this._rootHDPrivateKey = mnemonic
       .toHDPrivateKey(passphrase, this._network)
   }
 
-  async _initializeBIP32 () {
-    this._hdPrivateKey = new HDPrivateKey(this._secret, this._network) // TODO: not sure if network works here
+  async _initializeBIP32Secret () {
+    this._rootHDPrivateKey = new HDPrivateKey(this._secret, this._network) // TODO: not sure if network works here
+  }
+
+  async _initializeBIP32Wallet () {
+    // TODO: optionally load from storage and update addresses from that
+
+    const BIP44CoinType = this._type.BIP44CoinTypes[this._network.name]
+
+    // get BIP 44 main account, external and change HD keys
+    const mainAccountHDPrivateKey = this._rootHDPrivateKey.derive(`m/44'/${BIP44CoinType}'/0'`)
+    this._mainAccountHDPrivateKeys = {
+      external: mainAccountHDPrivateKey.derive(0),
+      change: mainAccountHDPrivateKey.derive(1)
+    }
+
+    // generate the initial external and change addresses
+    this._addresses = {
+      external: new Array(this._gapLimit).fill().map((value, index) => this._deriveAddress('external', index)),
+      change: new Array(CHANGE_GAP_LIMIT).fill().map((value, index) => this._deriveAddress('change', index)),
+      get externalLastIndex () { return this.external.length - 1 },
+      get changeLastIndex () { return this.change.length - 1 }
+    }
+
+    // check transaction history to keep generating addresses until the last 5
+    // are new, like electrum does
+    // TODO
+
+    // TODO:
+    // - categorize addresses somehow (change and receiving)
+    // - add more protection and complexity to address generation (non-linear derivation paths)
+  }
+
+  _deriveAddress (type, index) {
+    const hdPrivateKey = this._mainAccountHDPrivateKeys[type].derive(index)
+    const privateKey = hdPrivateKey.privateKey
+    const publicKey = hdPrivateKey.publicKey
+    const address = privateKey.toAddress()
+
+    return {
+      privateKey,
+      publicKey,
+      address,
+      used: 'unknown',
+      updated: false
+    }
   }
 
   /**

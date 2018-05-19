@@ -87,8 +87,8 @@ describe('Wallet', () => {
     it('derives the correct HD private key from mnemonic', async () => {
       const wallet = new Wallet(TYPE_ID, CORRECT_SECRET_SEED)
       await wallet._ensureInitialized()
-      wallet._hdPrivateKey.constructor.name.should.equal('HDPrivateKey')
-      wallet._hdPrivateKey.toString().should.equal(DERIVED_HD_KEY.toString())
+      wallet._rootHDPrivateKey.constructor.name.should.equal('HDPrivateKey')
+      wallet._rootHDPrivateKey.toString().should.equal(DERIVED_HD_KEY.toString())
     })
 
     it('derives the correct HD private key from mnemonic and passphrase', async () => {
@@ -97,8 +97,8 @@ describe('Wallet', () => {
         passphrase: PASSPHRASE
       })
       await wallet._ensureInitialized()
-      wallet._hdPrivateKey.constructor.name.should.equal('HDPrivateKey')
-      wallet._hdPrivateKey.toString().should.equal(DERIVED_HD_KEY_WITH_PASSPHRASE.toString())
+      wallet._rootHDPrivateKey.constructor.name.should.equal('HDPrivateKey')
+      wallet._rootHDPrivateKey.toString().should.equal(DERIVED_HD_KEY_WITH_PASSPHRASE.toString())
     })
   })
 
@@ -122,8 +122,8 @@ describe('Wallet', () => {
     it('stores the correct HD private key', async () => {
       const wallet = new Wallet(TYPE_ID, CORRECT_SECRET_KEY)
       await wallet._ensureInitialized()
-      wallet._hdPrivateKey.constructor.name.should.equal('HDPrivateKey')
-      wallet._hdPrivateKey.toString().should.equal(CORRECT_SECRET_KEY)
+      wallet._rootHDPrivateKey.constructor.name.should.equal('HDPrivateKey')
+      wallet._rootHDPrivateKey.toString().should.equal(CORRECT_SECRET_KEY)
     })
   })
 })

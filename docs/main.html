@@ -92,6 +92,8 @@
             
             <div class="content"><div class='highlight'><pre>
 <span class="hljs-keyword">const</span> WALLET_TYPE_LIST = <span class="hljs-built_in">Object</span>.keys(WALLET_TYPES)
+<span class="hljs-keyword">const</span> DEFAULT_GAP_LIMIT = <span class="hljs-number">20</span>
+<span class="hljs-keyword">const</span> CHANGE_GAP_LIMIT = <span class="hljs-number">5</span>
 
 <span class="hljs-comment">/**
  * Abstracts the logic of wallets, supporting multiple types for multiple currencies.
@@ -162,10 +164,12 @@
             
             <div class="content"><div class='highlight'><pre>    options = Joi.attempt(options,
       Joi.object({
-        <span class="hljs-attr">network</span>: Joi.string().valid([<span class="hljs-string">'livenet'</span>, <span class="hljs-string">'testnet'</span>]).default(<span class="hljs-string">'livenet'</span>)
+        <span class="hljs-attr">network</span>: Joi.string().valid([<span class="hljs-string">'livenet'</span>, <span class="hljs-string">'testnet'</span>]).default(<span class="hljs-string">'livenet'</span>),
+        <span class="hljs-attr">gapLimit</span>: Joi.number().integer().positive().max(<span class="hljs-number">100</span>).default(DEFAULT_GAP_LIMIT)
       }))
 
-    <span class="hljs-keyword">this</span>._network = Networks.get(options.network)</pre></div></div>
+    <span class="hljs-keyword">this</span>._network = Networks.get(options.network)
+    <span class="hljs-keyword">this</span>._gapLimit = options.gapLimit</pre></div></div>
             
         </li>
         
@@ -273,14 +277,10 @@ to be already initialized</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">const</span> secretInitialization = {
-      <span class="hljs-attr">BIP39</span>: <span class="hljs-function"><span class="hljs-params">()</span> =&gt;</span> <span class="hljs-keyword">this</span>._initializeBIP39(),
-      <span class="hljs-attr">BIP32</span>: <span class="hljs-function"><span class="hljs-params">()</span> =&gt;</span> <span class="hljs-keyword">this</span>._initializeBIP32()
-    }[<span class="hljs-keyword">this</span>._type.secretType]
-
-    <span class="hljs-keyword">if</span> (!secretInitialization) <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> <span class="hljs-built_in">Error</span>(<span class="hljs-string">`Unknown secret protocol "<span class="hljs-subst">${<span class="hljs-keyword">this</span>._type.secretType}</span>"`</span>)
-
-    secretInitialization()</pre></div></div>
+            <div class="content"><div class='highlight'><pre>    ;({
+      <span class="hljs-attr">BIP39</span>: <span class="hljs-function"><span class="hljs-params">()</span> =&gt;</span> <span class="hljs-keyword">this</span>._initializeBIP39Secret(),
+      <span class="hljs-attr">BIP32</span>: <span class="hljs-function"><span class="hljs-params">()</span> =&gt;</span> <span class="hljs-keyword">this</span>._initializeBIP32Secret()
+    })[<span class="hljs-keyword">this</span>._type.secretType]()</pre></div></div>
             
         </li>
         
@@ -291,19 +291,14 @@ to be already initialized</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-14">&#182;</a>
               </div>
-              <p>update initialization-related state props</p>
+              <p>initialize wallet</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">this</span>._initialized = <span class="hljs-literal">true</span>
-    <span class="hljs-keyword">this</span>._initializationPromise = <span class="hljs-literal">false</span>
-  }
-
-  <span class="hljs-keyword">async</span> _initializeBIP39 () {
-    <span class="hljs-keyword">const</span> stringFormat = <span class="hljs-keyword">typeof</span> <span class="hljs-keyword">this</span>._secret === <span class="hljs-string">'string'</span>
-
-    <span class="hljs-keyword">const</span> seed = stringFormat ? <span class="hljs-keyword">this</span>._secret : <span class="hljs-keyword">this</span>._secret.seed
-    <span class="hljs-keyword">const</span> passphrase = stringFormat ? <span class="hljs-literal">null</span> : <span class="hljs-keyword">this</span>._secret.passphrase</pre></div></div>
+            <div class="content"><div class='highlight'><pre>    ;({
+      <span class="hljs-attr">BIP39</span>: <span class="hljs-function"><span class="hljs-params">()</span> =&gt;</span> <span class="hljs-keyword">this</span>._initializeBIP32Wallet(),
+      <span class="hljs-attr">BIP32</span>: <span class="hljs-function"><span class="hljs-params">()</span> =&gt;</span> <span class="hljs-keyword">this</span>._initializeBIP32Wallet()
+    })[<span class="hljs-keyword">this</span>._type.secretType]()</pre></div></div>
             
         </li>
         
@@ -314,17 +309,146 @@ to be already initialized</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-15">&#182;</a>
               </div>
+              <p>update initialization-related state props</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">this</span>._initialized = <span class="hljs-literal">true</span>
+    <span class="hljs-keyword">this</span>._initializationPromise = <span class="hljs-literal">false</span>
+  }
+
+  <span class="hljs-keyword">async</span> _initializeBIP39Secret () {
+    <span class="hljs-keyword">const</span> stringFormat = <span class="hljs-keyword">typeof</span> <span class="hljs-keyword">this</span>._secret === <span class="hljs-string">'string'</span>
+
+    <span class="hljs-keyword">const</span> seed = stringFormat ? <span class="hljs-keyword">this</span>._secret : <span class="hljs-keyword">this</span>._secret.seed
+    <span class="hljs-keyword">const</span> passphrase = stringFormat ? <span class="hljs-literal">null</span> : <span class="hljs-keyword">this</span>._secret.passphrase</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-16">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-16">&#182;</a>
+              </div>
               <p>derive and store HD private key from mnemonic</p>
 
             </div>
             
             <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">const</span> mnemonic = <span class="hljs-keyword">new</span> Mnemonic(seed)
-    <span class="hljs-keyword">this</span>._hdPrivateKey = mnemonic
+    <span class="hljs-keyword">this</span>._rootHDPrivateKey = mnemonic
       .toHDPrivateKey(passphrase, <span class="hljs-keyword">this</span>._network)
   }
 
-  <span class="hljs-keyword">async</span> _initializeBIP32 () {
-    <span class="hljs-keyword">this</span>._hdPrivateKey = <span class="hljs-keyword">new</span> HDPrivateKey(<span class="hljs-keyword">this</span>._secret, <span class="hljs-keyword">this</span>._network) <span class="hljs-comment">// <span class="hljs-doctag">TODO:</span> not sure if network works here</span>
+  <span class="hljs-keyword">async</span> _initializeBIP32Secret () {
+    <span class="hljs-keyword">this</span>._rootHDPrivateKey = <span class="hljs-keyword">new</span> HDPrivateKey(<span class="hljs-keyword">this</span>._secret, <span class="hljs-keyword">this</span>._network) <span class="hljs-comment">// <span class="hljs-doctag">TODO:</span> not sure if network works here</span>
+  }
+
+  <span class="hljs-keyword">async</span> _initializeBIP32Wallet () {</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-17">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-17">&#182;</a>
+              </div>
+              <p>TODO: optionally load from storage and update addresses from that</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>
+    <span class="hljs-keyword">const</span> BIP44CoinType = <span class="hljs-keyword">this</span>._type.BIP44CoinTypes[<span class="hljs-keyword">this</span>._network.name]</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-18">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-18">&#182;</a>
+              </div>
+              <p>get BIP 44 main account, external and change HD keys</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">const</span> mainAccountHDPrivateKey = <span class="hljs-keyword">this</span>._rootHDPrivateKey.derive(<span class="hljs-string">`m/44'/<span class="hljs-subst">${BIP44CoinType}</span>'/0'`</span>)
+    <span class="hljs-keyword">this</span>._mainAccountHDPrivateKeys = {
+      <span class="hljs-attr">external</span>: mainAccountHDPrivateKey.derive(<span class="hljs-number">0</span>),
+      <span class="hljs-attr">change</span>: mainAccountHDPrivateKey.derive(<span class="hljs-number">1</span>)
+    }</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-19">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-19">&#182;</a>
+              </div>
+              <p>generate the initial external and change addresses</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">this</span>._addresses = {
+      <span class="hljs-attr">external</span>: <span class="hljs-keyword">new</span> <span class="hljs-built_in">Array</span>(<span class="hljs-keyword">this</span>._gapLimit).fill().map(<span class="hljs-function">(<span class="hljs-params">value, index</span>) =&gt;</span> <span class="hljs-keyword">this</span>._deriveAddress(<span class="hljs-string">'external'</span>, index)),
+      <span class="hljs-attr">change</span>: <span class="hljs-keyword">new</span> <span class="hljs-built_in">Array</span>(CHANGE_GAP_LIMIT).fill().map(<span class="hljs-function">(<span class="hljs-params">value, index</span>) =&gt;</span> <span class="hljs-keyword">this</span>._deriveAddress(<span class="hljs-string">'change'</span>, index)),
+      get externalLastIndex () { <span class="hljs-keyword">return</span> <span class="hljs-keyword">this</span>.external.length - <span class="hljs-number">1</span> },
+      get changeLastIndex () { <span class="hljs-keyword">return</span> <span class="hljs-keyword">this</span>.change.length - <span class="hljs-number">1</span> }
+    }</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-20">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-20">&#182;</a>
+              </div>
+              <p>check transaction history to keep generating addresses until the last 5
+are new, like electrum does
+TODO</p>
+
+            </div>
+            
+        </li>
+        
+        
+        <li id="section-21">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-21">&#182;</a>
+              </div>
+              <p>TODO:</p>
+<ul>
+<li>categorize addresses somehow (change and receiving)</li>
+<li>add more protection and complexity to address generation (non-linear derivation paths)</li>
+</ul>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  }
+
+  _deriveAddress (type, index) {
+    <span class="hljs-keyword">const</span> hdPrivateKey = <span class="hljs-keyword">this</span>._mainAccountHDPrivateKeys[type].derive(index)
+    <span class="hljs-keyword">const</span> privateKey = hdPrivateKey.privateKey
+    <span class="hljs-keyword">const</span> publicKey = hdPrivateKey.publicKey
+    <span class="hljs-keyword">const</span> address = privateKey.toAddress()
+
+    <span class="hljs-keyword">return</span> {
+      privateKey,
+      publicKey,
+      address,
+      <span class="hljs-attr">used</span>: <span class="hljs-string">'unknown'</span>,
+      <span class="hljs-attr">updated</span>: <span class="hljs-literal">false</span>
+    }
   }
 
   <span class="hljs-comment">/**
@@ -391,11 +515,11 @@ to be already initialized</p>
         </li>
         
         
-        <li id="section-16">
+        <li id="section-22">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-16">&#182;</a>
+                <a class="pilcrow" href="#section-22">&#182;</a>
               </div>
               <p>TODO: user-friendly error messages instead of Joi’s? <a href="https://github.com/hapijs/joi/issues/546">https://github.com/hapijs/joi/issues/546</a></p>
 
