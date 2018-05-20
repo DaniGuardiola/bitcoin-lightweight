@@ -2,12 +2,12 @@ const WALLET_TYPES = require('./dictionaries/wallet-types')
 
 const createWallet = require('./lib/create-wallet')
 const Joi = require('./lib/joi')
+const Promise = require('bluebird')
+const Electrum = require('electrum-client')
+const sha256 = require('js-sha256')
 
 const Mnemonic = require('bitcore-mnemonic')
-const {
-  HDPrivateKey,
-  Networks
-} = require('bitcore-lib')
+const {HDPrivateKey, Networks} = require('bitcore-lib')
 
 // ----------------
 // constants
@@ -15,6 +15,7 @@ const {
 const WALLET_TYPE_LIST = Object.keys(WALLET_TYPES)
 const DEFAULT_GAP_LIMIT = 20
 const CHANGE_GAP_LIMIT = 5
+const ADDRESSES_UPDATE_CONCURRENCY = 20
 
 /**
  * Abstracts the logic of wallets, supporting multiple types for multiple currencies.
@@ -31,14 +32,13 @@ module.exports = class Wallet {
    * @return {Wallet}         Wallet instance
    */
   static create (type, options = {}) {
-    const { secret } = createWallet[type](options)
+    const {secret} = createWallet[type](options)
     return new Wallet(type, secret)
   }
 
   constructor (typeId, secret, options = {}) {
     // validate and store wallet type
-    typeId = Joi.attempt(typeId,
-      Joi.string().valid(WALLET_TYPE_LIST).required())
+    typeId = Joi.attempt(typeId, Joi.string().valid(WALLET_TYPE_LIST).required())
 
     this._type = WALLET_TYPES[typeId]
 
@@ -46,28 +46,26 @@ module.exports = class Wallet {
     this._secret = Joi.attempt(secret, this._type.secretSchema)
 
     // validate and store options
-    options = Joi.attempt(options,
-      Joi.object({
-        network: Joi.string().valid(['livenet', 'testnet']).default('livenet'),
-        gapLimit: Joi.number().integer().positive().max(100).default(DEFAULT_GAP_LIMIT)
-      }))
+    options = Joi.attempt(options, Joi.object({
+      network: Joi.string().valid(['livenet', 'testnet']).default('livenet'),
+      gapLimit: Joi.number().integer().positive().max(100).default(DEFAULT_GAP_LIMIT)
+    }))
 
     this._network = Networks.get(options.network)
     this._gapLimit = options.gapLimit
+
+    // init electrum client
+    this._electrum = new Electrum(53012, 'testnet.hsmiths.com', 'tls')
 
     // initialization
     this._initialized = false
     this._initializationPromise = this._initialize()
   }
+
   async _ensureInitialized () {
-    // this method is intended to be used at the start of any method that needs the wallet
-    // to be already initialized
-
-    // it can be used in async functions by adding this at the top: await this._ensureInitialized()
-
+    // this method can be used in async functions by adding this at the top: await this._ensureInitialized()
     // this will ensure that the function will only be run after initialization
 
-    // TODO: include timeout?
     if (this._initialized) return
 
     if (!this._initializationPromise) this._initializationPromise = this._initialize()
@@ -78,16 +76,19 @@ module.exports = class Wallet {
   async _initialize () {
     // TODO: include timeout?
 
-    // initialize secret
+    // initialize secret;
     ;({
       BIP39: () => this._initializeBIP39Secret(),
       BIP32: () => this._initializeBIP32Secret()
     })[this._type.secretType]()
 
-    // initialize wallet
-    ;({
-      BIP39: () => this._initializeBIP32Wallet(),
-      BIP32: () => this._initializeBIP32Wallet()
+    // connect to electrum
+    await this._electrum.connect()
+
+    // initialize wallet;
+    await ({
+      BIP39: () => this._initializeBIP44Wallet(),
+      BIP32: () => this._initializeBIP44Wallet()
     })[this._type.secretType]()
 
     // update initialization-related state props
@@ -95,23 +96,26 @@ module.exports = class Wallet {
     this._initializationPromise = false
   }
 
-  async _initializeBIP39Secret () {
+  _initializeBIP39Secret () {
     const stringFormat = typeof this._secret === 'string'
 
-    const seed = stringFormat ? this._secret : this._secret.seed
-    const passphrase = stringFormat ? null : this._secret.passphrase
+    const seed = stringFormat
+      ? this._secret
+      : this._secret.seed
+    const passphrase = stringFormat
+      ? null
+      : this._secret.passphrase
 
     // derive and store HD private key from mnemonic
     const mnemonic = new Mnemonic(seed)
-    this._rootHDPrivateKey = mnemonic
-      .toHDPrivateKey(passphrase, this._network)
+    this._rootHDPrivateKey = mnemonic.toHDPrivateKey(passphrase, this._network)
   }
 
-  async _initializeBIP32Secret () {
+  _initializeBIP32Secret () {
     this._rootHDPrivateKey = new HDPrivateKey(this._secret, this._network) // TODO: not sure if network works here
   }
 
-  async _initializeBIP32Wallet () {
+  async _initializeBIP44Wallet () {
     // TODO: optionally load from storage and update addresses from that
 
     const BIP44CoinType = this._type.BIP44CoinTypes[this._network.name]
@@ -126,18 +130,17 @@ module.exports = class Wallet {
     // generate the initial external and change addresses
     this._addresses = {
       external: new Array(this._gapLimit).fill().map((value, index) => this._deriveAddress('external', index)),
-      change: new Array(CHANGE_GAP_LIMIT).fill().map((value, index) => this._deriveAddress('change', index)),
-      get externalLastIndex () { return this.external.length - 1 },
-      get changeLastIndex () { return this.change.length - 1 }
+      change: new Array(CHANGE_GAP_LIMIT).fill().map((value, index) => this._deriveAddress('change', index))
     }
 
-    // check transaction history to keep generating addresses until the last 5
-    // are new, like electrum does
-    // TODO
+    // subscribe to address updates
+    this._electrum.subscribe.on('blockchain.address.subscribe', async params => {
+      await this._updateAddressHistoryById(params[0])
+      return this._update()
+    })
 
-    // TODO:
-    // - categorize addresses somehow (change and receiving)
-    // - add more protection and complexity to address generation (non-linear derivation paths)
+    // run the initial update
+    return this._update()
   }
 
   _deriveAddress (type, index) {
@@ -145,14 +148,126 @@ module.exports = class Wallet {
     const privateKey = hdPrivateKey.privateKey
     const publicKey = hdPrivateKey.publicKey
     const address = privateKey.toAddress()
+    const id = address.toString()
 
     return {
+      type,
       privateKey,
       publicKey,
       address,
-      used: 'unknown',
-      updated: false
+      id,
+      subscribed: false,
+      status: null,
+      history: []
     }
+  }
+
+  _fillAddresses (type, amount) {
+    const length = this._addresses[type].length
+    const newAddresses = new Array(amount).fill().map((value, index) =>
+      this._deriveAddress(type, index + length))
+    this._addresses[type] = this._addresses[type].concat(newAddresses)
+  }
+
+  _computeAddressStatus (history) {
+    if (!history.length) return null
+    return sha256(history.reduce((out, tx) => `${out}${tx.tx_hash}:${tx.height}:`, ''))
+  }
+
+  _getAddressLocationFromId (addressId, type) {
+    // if type is specified
+    if (type) {
+      return {
+        type,
+        index: this._addresses[type].findIndex(address => address.id === addressId)
+      }
+    }
+
+    let index
+
+    // try external
+    type = 'external'
+    index = this._getAddressLocationFromId(addressId, type).index
+    if (index < 0) { // if not, it must be change
+      type = 'change'
+      index = this._getAddressLocationFromId(addressId, type).index
+    }
+
+    return { type, index }
+  }
+
+  async _updateAddressHistoryById (id, type) {
+    const addressLocation = this._getAddressLocationFromId(id, type)
+    const { index } = addressLocation
+    type = addressLocation.type
+
+    this._addresses[type][index] = await this._updateAddressHistory(this._addresses[type][index])
+  }
+
+  async _updateAddressHistory (address) {
+    address.history = await this._electrum.blockchain.address.getHistory(address.id)
+    address.status = this._computeAddressStatus(address.history)
+    address.updated = true
+
+    return address
+  }
+
+  async _updateAddresses (type) {
+    // update all types of addresses if type is not specified
+    if (!type) return Promise.map(['external', 'change'], type => this._updateAddresses(type))
+
+    // take care of outdated / not subscribed addresses
+    this._addresses[type] = await Promise.map(this._addresses[type], async address => {
+      let status
+      if (!address.subscribed) {
+        status = await this._electrum.blockchain.address.subscribe(address.id)
+        address.subscribed = true
+      } else return address // if already subscribed, no need to pull history
+
+      if (address.status !== status) {
+        address = await this._updateAddressHistory(address)
+      }
+      return address
+    }, { concurrency: ADDRESSES_UPDATE_CONCURRENCY })
+  }
+
+  // returns true if new addresses were added (in which case an update is needed)
+  async _fixGap (type) {
+    // fix for all types of addresses if type is not specified
+    if (!type) return Promise.map(['external', 'change'], type => this._fixGap(type)).then(arr => arr.some(r => r === true))
+
+    const gapLimit = type === 'external'
+      ? this._gapLimit
+      : CHANGE_GAP_LIMIT
+
+    // check gap and fill it if needed
+    let initialIndex = this._addresses[type].length > gapLimit
+      ? this._addresses[type].length - gapLimit
+      : 0
+    let nMissingAddresses = 0
+
+    this._addresses[type].slice(initialIndex).reverse().some((address, i) => {
+      if (address.history.length) {
+        nMissingAddresses = gapLimit - i
+        return true
+      }
+    })
+
+    if (nMissingAddresses) {
+      this._fillAddresses(type, nMissingAddresses)
+      return true
+    }
+  }
+
+  async _update () {
+    // update all addresses
+    await this._updateAddresses()
+
+    // check gap and fill it if needed
+    const newAddresses = await this._fixGap()
+
+    // update again if new addresses were added
+    if (newAddresses) return this._update()
   }
 
   /**
