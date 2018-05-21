@@ -39,6 +39,8 @@ ID: `fairwallet_electrum_bip32`
 ### Table of Contents
 
 -   [main](#main)
+    -   [onReady](#onready)
+    -   [getAddresses](#getaddresses)
     -   [getBalance](#getbalance)
     -   [create](#create)
 
@@ -50,6 +52,16 @@ Abstracts the logic of wallets, supporting multiple types for multiple currencie
 
 -   `type` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** Type of wallet
 -   `secret` **([string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String) \| [object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object))** Private information that provides full access to the wallet
+
+### onReady
+
+Resolves once wallet is up-to-date and ready to be used (or immediately if that's already the current state)
+
+Returns **[Promise](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise)** Resolves only once ready
+
+### getAddresses
+
+Returns **{external: [array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;{id: [string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String), balance: [number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)}>, change: [array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;{id: [string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String), balance: [number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)}>}** Addresses and their current balances
 
 ### getBalance
 
