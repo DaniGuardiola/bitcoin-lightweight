@@ -313,7 +313,7 @@ module.exports = class Wallet {
 
     const { inputs, outputs } = transaction
 
-    const bitcoinjs = bitcoin.Transaction.fromHex(Buffer.from(hex, 'hex'))
+    const bitcoinjs = bitcoin.Transaction.fromHex(hex)
 
     console.log(bitcoinjs)
     console.log(bitcoinjs.getId())
