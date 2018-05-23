@@ -6,8 +6,11 @@ const Promise = require('bluebird')
 const Electrum = require('electrum-client')
 const sha256 = require('js-sha256')
 
+// TODO(bitcoinjs): replace with bip39
 const Mnemonic = require('bitcore-mnemonic')
-const { HDPrivateKey, Networks, Transaction, Script } = require('bitcore-lib')
+// TODO(bitcoinjs): replace with bitcoinjs-lib
+const { HDPrivateKey, Networks, Transaction } = require('bitcore-lib')
+const bitcoin = require('bitcoinjs-lib')
 
 // ----------------
 // constants
@@ -15,7 +18,7 @@ const { HDPrivateKey, Networks, Transaction, Script } = require('bitcore-lib')
 const WALLET_TYPE_LIST = Object.keys(WALLET_TYPES)
 const DEFAULT_GAP_LIMIT = 20
 const CHANGE_GAP_LIMIT = 5
-const ADDRESSES_UPDATE_CONCURRENCY = 20
+const ADDRESSES_UPDATE_CONCURRENCY = 1 // 20
 const TRANSACTION_RETRIEVAL_CONCURRENCY = 5
 
 /**
@@ -40,6 +43,7 @@ module.exports = class Wallet {
       gapLimit: Joi.number().integer().positive().max(100).default(DEFAULT_GAP_LIMIT)
     }))
 
+    // TODO(bitcoinjs): bitcoin.networks.testnet
     this._network = Networks.get(options.network)
     this._gapLimit = options.gapLimit
 
@@ -94,6 +98,7 @@ module.exports = class Wallet {
     delete this._secret.passphrase
 
     // derive and store HD private key from mnemonic
+    // TODO(bitcoinjs): https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/test/integration/bip32.js#L15
     const mnemonic = new Mnemonic(seed)
     this._rootHDPrivateKey = mnemonic.toHDPrivateKey(passphrase, this._network)
   }
@@ -102,6 +107,7 @@ module.exports = class Wallet {
     // github.com/bitcoin/bips/blob/master/bip-0032.mediawiki
 
     // store HD private key
+    // TODO(bitcoinjs): bitcoin.HDNode.fromBase58(xpriv, bitcoin.networks.testnet)
     this._rootHDPrivateKey = new HDPrivateKey(this._secret, this._network) // TODO: not sure if network works here
   }
 
@@ -118,8 +124,10 @@ module.exports = class Wallet {
     const BIP44CoinType = this._type.BIP44CoinTypes[this._network.name]
 
     // get BIP 44 main account, external and change HD keys
+    // TODO(bitcoinjs): hdNode.derivePath('m/44'/1'/0')
     const mainAccountHDPrivateKey = this._rootHDPrivateKey.derive(`m/44'/${BIP44CoinType}'/0'`)
     this._mainAccountHDPrivateKeys = {
+      // TODO(bitcoinjs): hdNode.derive(1)
       external: mainAccountHDPrivateKey.derive(0),
       change: mainAccountHDPrivateKey.derive(1)
     }
@@ -266,8 +274,11 @@ module.exports = class Wallet {
     const history = await this._electrum.blockchain.address.getHistory(addressId)
     const status = this._computeAddressStatus(history)
 
-    await Promise.map(history,
-      tx => this._retrieveTransaction(tx.tx_hash),
+    await Promise.mapSeries(history,
+      tx => {
+        console.log(tx)
+        return this._retrieveTransaction(tx.tx_hash)
+      },
       { concurrency: TRANSACTION_RETRIEVAL_CONCURRENCY })
 
     return { history, status }
@@ -275,14 +286,13 @@ module.exports = class Wallet {
 
   async _updateAddresses (type) {
     // update all types of addresses if type is not specified
-    if (!type) return Promise.map(['external', 'change'], type => this._updateAddresses(type))
+    if (!type) return Promise.mapSeries(['external', 'change'], type => this._updateAddresses(type))
 
     // take care of not subscribed / outdated addresses
     this._addresses[type] = await Promise.map(this._addresses[type], async address => {
       let status
       if (!address.subscribed) {
-        console.log(this._electrum.blockchain)
-        console.log(address)
+        console.log('ADDRESS', address.id)
         status = await this._electrum.blockchain.address.subscribe(address.id)
         address.subscribed = true
       } else return address // if already subscribed, no need to pull history
@@ -298,11 +308,33 @@ module.exports = class Wallet {
 
   async _retrieveTransaction (hash) {
     const hex = await this._electrum.blockchain.transaction.get(hash)
-    const transaction = new Transaction(hex)
+    console.log(hex)
+    const transaction = new Transaction(Buffer.from(hex, 'hex'))
 
-    // const { inputs, outputs } = transaction
+    const { inputs, outputs } = transaction
 
-    // TODO: process scripts somehow
+    const bitcoinjs = bitcoin.Transaction.fromHex(Buffer.from(hex, 'hex'))
+
+    console.log(bitcoinjs)
+    console.log(bitcoinjs.getId())
+    console.log(bitcoinjs.ins[0].hash.toString('hex'))
+    console.log(bitcoinjs.ins[0].script.toString('hex'))
+    console.log(transaction.toJSON())
+    // WIP: process scripts somehow
+
+    if (inputs.length > 1) {
+      const errorMessage =
+        `Whoops! fairwallet-lib doesn't know how to deal with transactions with more than 1 input`
+      return Promise.reject(new Error(errorMessage))
+    } else if (!inputs.length) {
+      const errorMessage =
+        `No inputs! :(`
+      return Promise.reject(new Error(errorMessage))
+    }
+
+    const input = inputs[0]
+
+    console.log('input.script', input.script)
 
     this._transactions[hash] = {
       hash,
