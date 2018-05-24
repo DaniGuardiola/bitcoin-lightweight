@@ -1,36 +1,87 @@
-# fairwallet-lib
+# bitcoin-lightweight
 
-A module that abstracts the wallet internal logic for the Fairwallet app (but feel free to use it on your own app or service).
+A friendly lightweight Bitcoin wallet, using electrumx servers as backend and with a complete set of features:
 
-In short, this module provides a Javascript class that supports different types of wallets in the [Faircoop](fair.coop) ecosystem. It is an abstraction of the internals of the wallet, making it easy to focus on the UX of apps instead of dealing with internal logic such as blockchain stuff, cryptography, communication with servers, transaction management, retrieving information and more.
+- BIP44 key derivation, with external and change addresses
+- BIP39 seed (mnemonic phrase) generation or import with optional passphrase
+- Real time events:
+  - New incoming or outgoing transactions for all addresses
+  - Transaction status change on the blockchain (unconfirmed / inputs confirmed / confirmed)
+  - New blocks
+- Automatic SPV
+- Automatic transaction composition, signing and broadcasting
+- Storage-friendly: a normalized way to save and restore the state of the JavaScript class to load your app or service fast
+- Really easy to use and high level API, so you can focus on building your own great user interface or API
 
-# Types of wallets
+# Usage
 
-At the moment, only two types of wallet are supported and they are both Faircoin and Electrum based.
+```js
+import Wallet from 'bitcoin-lightweight'
 
-## Faircoin (electrum)
+const wallet = new Wallet(
+  'bitcoin_electrum_bip39',                     // wallet type
+  'chair window sun guitar piano sky brick',    // secret
+  { network: 'testnet' })                       // options
 
-[Faircoin](fair-coin.org) is a Bitcoin-based cryptocurrency that is intended as an eco-friendly coin (thanks to [Proof of Cooperation](github.com/faircoin/faircoin/blob/master/doc/on-proof-of-cooperation.md)) for a fair economy.
+const app = async () {
+  await wallet.ready()                          // wait for 100% load
 
-At the moment, only [Electrum](electrum.org) ([faircoin fork](github.com/faircoin/electrumfair)) wallets are supported.
+  const bitcoinBalance = wallet.getBalance()    // obtain wallet balance in bitcoin
+  console.log()
 
-As it is based on Bitcoin, the logic is pretty much the same, allowing the use of adapted Bitcoin libraries that already exist. The libraries currently used in `fairwallet-lib` are forks of [`bitcore-lib`](github.com/bitpay/bitcore-lib) ([fork](github.com/faircoin/faircore-lib)) and [`electrum-client`](`github.com/you21979/node-electrum-client/`) (fork in progress).
+  const euroBalance = wallet.getBalance('EUR')  // obtain balance in euro
 
-### BIP-39 (mnemonics)
+  const txFilter = {
+    before: timestamp,                  // block timestamp
+    after: timestamp,                   // block timestamp
+    from: [<addresses>],                // list of addresses
+    to: [<addresses>],                  // list of addresses
+    direction: 'out' / 'in',            // direction of the transfer
+    min: <amount of bitcoin>,           // amount of bitcoin transferred
+    max: <amount of bitcoin>,           // amount of bitcoin transferred
+    description: <substring or regex>   // description text search
+  }
 
--   [BIP-0039 spec](github.com/bitcoin/bips/blob/master/bip-0039.mediawiki)
+  const txs = wallet.getTransactions(   // obtain transactions
+    txFilter,                           // transaction filter
+    10,                                 // items per page
+    3)                                  // page number
 
-Wallet that is generated from a "seed" phrase comformed of multiple words separated by spaces, making it friendlier for humans and easier to remember than a standard private key.
+  wallet.send(10, <address>)            // send someone bitcoin
 
-ID: `fairwallet_electrum_bip39`
+  wallet.receive()                      // get last unused address
+}
 
-### BIP-32 (Hierarchical Deterministic Wallets)
+app()
 
--   [BIP-0032 spec](github.com/bitcoin/bips/blob/master/bip-0032.mediawiki)
+```
 
-Wallet that generates the same keypairs (addresses) from the same "parent" private key through a complex deterministic mathematical algorithm.
+> Note: keep in mind that wallet is refered to at times as the collection of addresses and their private keys that hold the ownership of the Bitcoins (not the wallet software itself). 
 
-ID: `fairwallet_electrum_bip32`
+Two types of Bitcoin electrum wallets are supported:
+
+### Types of wallet
+
+- BIP39 (mnemonic)
+
+> [BIP-0039 spec](github.com/bitcoin/bips/blob/master/bip-0039.mediawiki)
+
+Generated from a "seed" phrase comformed of multiple words separated by spaces, making it friendly and easier to remember than a standard private key. Generates a BIP32 HD key (read below).
+
+ID: `bitcoin_electrum_bip39`
+Secret: 
+
+- BIP-32 (Hierarchical Deterministic key)
+
+> [BIP-0032 spec](github.com/bitcoin/bips/blob/master/bip-0032.mediawiki)
+
+Generated from a private HD key. A Hierarchical Deterministic (HD) key is a seed that can be derived into multiple sub-keys or addresses. BIP39 phrases are converted to BIP32 seeds.
+
+The derivation path is BIP44 with addresses only from default account at index 0.
+
+> [BIP-0044 spec](github.com/bitcoin/bips/blob/master/bip-0044.mediawiki)
+
+ID: `bitcoin_electrum_bip32`
 
 # API reference
 
