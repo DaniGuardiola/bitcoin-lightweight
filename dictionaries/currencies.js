@@ -1,7 +1,7 @@
 module.exports = {
-  FAIR: {
-    name: 'faircoin',
-    symbol: 'ƒ'
+  BTC: {
+    name: 'bitcoin',
+    symbol: '₿'
   },
   EUR: {
     name: 'euro',

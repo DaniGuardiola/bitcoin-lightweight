@@ -324,7 +324,7 @@ module.exports = class Wallet {
 
     if (inputs.length > 1) {
       const errorMessage =
-        `Whoops! fairwallet-lib doesn't know how to deal with transactions with more than 1 input`
+        `Whoops! bitcoin-lightweight doesn't know yet how to deal with transactions with more than 1 input`
       return Promise.reject(new Error(errorMessage))
     } else if (!inputs.length) {
       const errorMessage =
