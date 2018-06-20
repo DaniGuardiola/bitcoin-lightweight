@@ -9,7 +9,7 @@ const sha256 = require('js-sha256')
 // TODO(bitcoinjs): replace with bip39
 const Mnemonic = require('bitcore-mnemonic')
 // TODO(bitcoinjs): replace with bitcoinjs-lib
-const { HDPrivateKey, Networks, Transaction } = require('bitcore-lib')
+const { HDPrivateKey, Networks } = require('bitcore-lib')
 const bitcoin = require('bitcoinjs-lib')
 
 // ----------------
@@ -44,7 +44,8 @@ module.exports = class Wallet {
     }))
 
     // TODO(bitcoinjs): bitcoin.networks.testnet
-    this._network = Networks.get(options.network)
+    this._bitcoreNetwork = Networks.get(options.network)
+    this._network = bitcoin.networks[options.network]
     this._gapLimit = options.gapLimit
 
     // init electrum client
@@ -100,7 +101,7 @@ module.exports = class Wallet {
     // derive and store HD private key from mnemonic
     // TODO(bitcoinjs): https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/test/integration/bip32.js#L15
     const mnemonic = new Mnemonic(seed)
-    this._rootHDPrivateKey = mnemonic.toHDPrivateKey(passphrase, this._network)
+    this._rootHDPrivateKey = mnemonic.toHDPrivateKey(passphrase, this._bitcoreNetwork)
   }
 
   _initializeBIP32Secret () {
@@ -108,7 +109,7 @@ module.exports = class Wallet {
 
     // store HD private key
     // TODO(bitcoinjs): bitcoin.HDNode.fromBase58(xpriv, bitcoin.networks.testnet)
-    this._rootHDPrivateKey = new HDPrivateKey(this._secret, this._network) // TODO: not sure if network works here
+    this._rootHDPrivateKey = new HDPrivateKey(this._secret, this._bitcoreNetwork) // TODO: not sure if network works here
   }
 
   async _onInitialized () {
@@ -121,7 +122,7 @@ module.exports = class Wallet {
 
   async _initializeBIP44Wallet () {
     // github.com/bitcoin/bips/blob/master/bip-0044.mediawiki
-    const BIP44CoinType = this._type.BIP44CoinTypes[this._network.name]
+    const BIP44CoinType = this._type.BIP44CoinTypes[this._bitcoreNetwork.name]
 
     // get BIP 44 main account, external and change HD keys
     // TODO(bitcoinjs): hdNode.derivePath('m/44'/1'/0')
@@ -138,8 +139,9 @@ module.exports = class Wallet {
       change: new Array(CHANGE_GAP_LIMIT).fill().map((value, index) => this._deriveAddress('change', index))
     }
 
-    // initialize transactions object
+    // initialize transaction objects
     this._transactions = {}
+    this._rawTransactions = {}
 
     // subscribe to address updates
     this._electrum.subscribe.on('blockchain.address.subscribe', async params => {
@@ -249,8 +251,8 @@ module.exports = class Wallet {
       index = this._getAddressLocationFromId(addressId, type).index
     }
 
-    // if not found, throw an error
-    if (index < 0) throw new Error(`Address '${addressId}' could not be found`)
+    // if not found, return false
+    if (index < 0) return false
 
     return { type, index }
   }
@@ -276,8 +278,7 @@ module.exports = class Wallet {
 
     await Promise.mapSeries(history,
       tx => {
-        console.log(tx)
-        return this._retrieveTransaction(tx.tx_hash)
+        return this._retrieveTransaction(tx.tx_hash, tx.height)
       },
       { concurrency: TRANSACTION_RETRIEVAL_CONCURRENCY })
 
@@ -292,7 +293,6 @@ module.exports = class Wallet {
     this._addresses[type] = await Promise.map(this._addresses[type], async address => {
       let status
       if (!address.subscribed) {
-        console.log('ADDRESS', address.id)
         status = await this._electrum.blockchain.address.subscribe(address.id)
         address.subscribed = true
       } else return address // if already subscribed, no need to pull history
@@ -306,45 +306,123 @@ module.exports = class Wallet {
   // ----------------
   // transaction
 
-  async _retrieveTransaction (hash) {
+  async _retrieveRawTransaction (hash) {
+    if (hash instanceof Buffer) hash = hash.toString('hex')
+
+    if (this._rawTransactions[hash]) return this._rawTransactions[hash]
+
     const hex = await this._electrum.blockchain.transaction.get(hash)
-    console.log(hex)
-    const transaction = new Transaction(Buffer.from(hex, 'hex'))
-
-    const { inputs, outputs } = transaction
-
-    const bitcoinjs = bitcoin.Transaction.fromHex(hex)
-
-    console.log(bitcoinjs)
-    console.log(bitcoinjs.getId())
-    console.log(bitcoinjs.ins[0].hash.toString('hex'))
-    console.log(bitcoinjs.ins[0].script.toString('hex'))
-    console.log(transaction.toJSON())
-    // WIP: process scripts somehow
-
-    if (inputs.length > 1) {
-      const errorMessage =
-        `Whoops! bitcoin-lightweight doesn't know yet how to deal with transactions with more than 1 input`
-      return Promise.reject(new Error(errorMessage))
-    } else if (!inputs.length) {
-      const errorMessage =
-        `No inputs! :(`
-      return Promise.reject(new Error(errorMessage))
-    }
-
-    const input = inputs[0]
-
-    console.log('input.script', input.script)
-
-    this._transactions[hash] = {
-      hash,
+    const tx = {
       hex,
-      transaction,
-      amount: 'TODO',
-      direction: 'TODO',
-      peer: 'TODO',
-      height: 'TODO'
+      transaction: bitcoin.Transaction.fromHex(hex)
     }
+
+    this._rawTransactions[hash] = tx
+    return tx
+  }
+
+  async _retrieveTransaction (hash, height) {
+    if (hash instanceof Buffer) hash = hash.toString('hex')
+
+    // TODO: handle height change (unconfirmed parents > confirmed parents in mempool > confirmed)
+    if (this._transactions[hash]) return this._transactions[hash]
+
+    const { transaction } = await this._retrieveRawTransaction(hash)
+
+    console.log('\n\n\n\n\n>> TRANSACTION', hash)
+
+    console.log(transaction)
+
+    const { ins, outs } = transaction
+
+    const inputAddresses = []
+    const inputExternalAddresses = []
+    let inputBalance = 0
+    let inputOwnedBalance = 0
+
+    console.log('\n\n==== INS  ====')
+
+    await Promise.map(ins, async input => {
+      console.log('\n> TYPE', bitcoin.script.classifyInput(input.script))
+      const { transaction: originalTx } = await this._retrieveRawTransaction(input.hash.reverse())
+      const originalOutput = originalTx.outs[input.index]
+      const address = bitcoin.address.fromOutputScript(originalOutput.script, this._network)
+      const addressInfo = this._getAddressLocationFromId(address)
+      if (addressInfo) inputOwnedBalance += originalOutput.value
+      else inputExternalAddresses.push(address)
+      inputBalance += originalOutput.value
+      inputAddresses.push(address)
+      console.log(address)
+      console.log(addressInfo)
+    })
+
+    console.log('\n\n\n\n')
+    console.log('INPUT BALANCE', inputBalance)
+    console.log('INPUT OWNED BALANCE', inputOwnedBalance)
+    console.log('INPUT EXTERNAL ADDRESSES', inputExternalAddresses)
+
+    const allInputOwned = inputBalance === inputOwnedBalance
+
+    console.log('ALL INPUT OWNED', allInputOwned)
+
+    console.log('\n\n==== OUTS ====')
+
+    const outputAddresses = []
+    const outputExternalAddresses = []
+    let outputBalance = 0
+    let outputOwnedBalance = 0
+
+    outs.forEach(output => {
+      console.log('\n> TYPE', bitcoin.script.classifyOutput(output.script))
+      const address = bitcoin.address.fromOutputScript(output.script, this._network)
+      const addressInfo = this._getAddressLocationFromId(address)
+      if (addressInfo) outputOwnedBalance += output.value
+      else outputExternalAddresses.push(address)
+      outputBalance += output.value
+      outputAddresses.push(address)
+      console.log(address)
+      console.log(addressInfo)
+    })
+
+    console.log('\n\n\n\n')
+    console.log('OUTPUT BALANCE', outputBalance)
+    console.log('OUTPUT OWNED BALANCE', outputOwnedBalance)
+    console.log('OUTPUT EXTERNAL ADDRESSES', outputExternalAddresses)
+
+    const change = outputOwnedBalance - inputOwnedBalance
+
+    const direction = change > 0 ? 'in' : 'out'
+
+    const amount = Math.abs(change) // TODO: minus fee
+
+    const fee = inputBalance - outputBalance // TODO: detect if fee was paid by this wallet
+
+    let peer = 'UNKNOWN'
+
+    if (direction === 'in') {
+      if (inputOwnedBalance === 0 && inputExternalAddresses.length === 1) {
+        peer = inputExternalAddresses[0]
+      } else throw new Error('Type of transaction not covered yet (owned inputs or multiple external input addresses)')
+    } else {
+      if (allInputOwned && outputExternalAddresses.length === 1) {
+        peer = outputExternalAddresses[0]
+      } else throw new Error('Type of transaction not covered yet (external inputs or multiple output addresses)')
+    }
+
+    const localTx = {
+      transaction,
+      amount,
+      direction,
+      fee,
+      height,
+      peer
+    }
+
+    console.log('\n\nRESULT\n', localTx)
+
+    this._transactions[hash] = localTx
+
+    return localTx
   }
 
   // ----------------
