@@ -4,12 +4,8 @@ const createWallet = require('./lib/create-wallet')
 const Joi = require('./lib/joi')
 const Promise = require('bluebird')
 const Electrum = require('electrum-client')
-const sha256 = require('js-sha256')
 
-// TODO(bitcoinjs): replace with bip39
-const Mnemonic = require('bitcore-mnemonic')
-// TODO(bitcoinjs): replace with bitcoinjs-lib
-const { HDPrivateKey, Networks } = require('bitcore-lib')
+const bip39 = require('bip39')
 const bitcoin = require('bitcoinjs-lib')
 
 // ----------------
@@ -39,12 +35,11 @@ module.exports = class Wallet {
 
     // validate and store options
     options = Joi.attempt(options, Joi.object({
-      network: Joi.string().valid(['livenet', 'testnet']).default('livenet'),
+      network: Joi.string().valid(['bitcoin', 'testnet']).default('bitcoin'),
       gapLimit: Joi.number().integer().positive().max(100).default(DEFAULT_GAP_LIMIT)
     }))
 
-    // TODO(bitcoinjs): bitcoin.networks.testnet
-    this._bitcoreNetwork = Networks.get(options.network)
+    this._networkName = options.network
     this._network = bitcoin.networks[options.network]
     this._gapLimit = options.gapLimit
 
@@ -81,7 +76,7 @@ module.exports = class Wallet {
     if (!this._initialized) throw new Error('Wallet is not initialized yet')
   }
 
-  _initializeBIP39Secret () {
+  _initializeBIP39BIP49Secret () {
     // github.com/bitcoin/bips/blob/master/bip-0039.mediawiki
 
     // true => string (seed) format
@@ -99,17 +94,15 @@ module.exports = class Wallet {
     delete this._secret.passphrase
 
     // derive and store HD private key from mnemonic
-    // TODO(bitcoinjs): https://github.com/bitcoinjs/bitcoinjs-lib/blob/master/test/integration/bip32.js#L15
-    const mnemonic = new Mnemonic(seed)
-    this._rootHDPrivateKey = mnemonic.toHDPrivateKey(passphrase, this._bitcoreNetwork)
+    const mnemonic = bip39.mnemonicToSeed(seed, passphrase)
+    this._rootHDNode = bitcoin.HDNode.fromSeedBuffer(mnemonic, this._network)
   }
 
-  _initializeBIP32Secret () {
+  _initializeBIP49Secret () {
     // github.com/bitcoin/bips/blob/master/bip-0032.mediawiki
 
     // store HD private key
-    // TODO(bitcoinjs): bitcoin.HDNode.fromBase58(xpriv, bitcoin.networks.testnet)
-    this._rootHDPrivateKey = new HDPrivateKey(this._secret, this._bitcoreNetwork) // TODO: not sure if network works here
+    this._rootHDNode = bitcoin.HDNode.fromBase58(this._secret, this._network)
   }
 
   async _onInitialized () {
@@ -120,17 +113,15 @@ module.exports = class Wallet {
     if (!this._initialized) return this._initializationPromise
   }
 
-  async _initializeBIP44Wallet () {
+  async _initializeBIP49Wallet () {
     // github.com/bitcoin/bips/blob/master/bip-0044.mediawiki
-    const BIP44CoinType = this._type.BIP44CoinTypes[this._bitcoreNetwork.name]
+    const BIP49CoinType = this._type.BIP49CoinTypes[this._networkName]
 
     // get BIP 44 main account, external and change HD keys
-    // TODO(bitcoinjs): hdNode.derivePath('m/44'/1'/0')
-    const mainAccountHDPrivateKey = this._rootHDPrivateKey.derive(`m/44'/${BIP44CoinType}'/0'`)
-    this._mainAccountHDPrivateKeys = {
-      // TODO(bitcoinjs): hdNode.derive(1)
-      external: mainAccountHDPrivateKey.derive(0),
-      change: mainAccountHDPrivateKey.derive(1)
+    const mainAccountHDNode = this._rootHDNode.derivePath(`m/49'/${BIP49CoinType}'/0'`)
+    this._mainAccountHDNodes = {
+      external: mainAccountHDNode.derive(0),
+      change: mainAccountHDNode.derive(1)
     }
 
     // generate the initial external and change addresses
@@ -144,7 +135,7 @@ module.exports = class Wallet {
     this._rawTransactions = {}
 
     // subscribe to address updates
-    this._electrum.subscribe.on('blockchain.address.subscribe', async params => {
+    this._electrum.subscribe.on('blockchain.scripthash.subscribe', async params => {
       await this._updateAddressHistoryById(params[0])
       return this._update()
     })
@@ -153,25 +144,31 @@ module.exports = class Wallet {
     return this._update()
   }
 
+  _deriveHDNode (type, index) {
+    return this._mainAccountHDNodes[type].derive(index)
+  }
+
   // ----------------
   // addresses
 
   _deriveAddress (type, index) {
     // derives an address from the relevant HD key for a given index
 
-    const hdPrivateKey = this._mainAccountHDPrivateKeys[type].derive(index)
-    const privateKey = hdPrivateKey.privateKey
-    const publicKey = hdPrivateKey.publicKey
-    const address = privateKey.toAddress()
-    const id = address.toString()
+    const hdNode = this._deriveHDNode(type, index)
+
+    const keyhash = bitcoin.crypto.hash160(hdNode.getPublicKeyBuffer())
+    const scriptSig = bitcoin.script.witnessPubKeyHash.output.encode(keyhash)
+    const addressBytes = bitcoin.crypto.hash160(scriptSig)
+    const outputScript = bitcoin.script.scriptHash.output.encode(addressBytes)
+
+    const id = bitcoin.address.fromOutputScript(outputScript, this._network)
+    const scriptHash = bitcoin.crypto.sha256(scriptSig)
 
     // initial address object
     return {
       id,
+      scriptHash,
       type,
-      privateKey,
-      publicKey,
-      address,
       subscribed: false,
       status: null,
       history: [],
@@ -220,7 +217,7 @@ module.exports = class Wallet {
   _computeAddressStatus (history) {
     // electrumx.readthedocs.io/en/latest/protocol-basics.html#status
     if (!history.length) return null
-    return sha256(history
+    return bitcoin.crypto.sha256(history
       .sort((a, b) => {
         if (a.height <= 0) return 1
         if (a.height === b.height) return 0
@@ -258,6 +255,7 @@ module.exports = class Wallet {
   }
 
   async _updateAddressHistoryById (id, type) {
+    console.log('_updateAddressHistoryById')
     // updates the history of an address by id (updates local record)
 
     const addressLocation = this._getAddressLocationFromId(id, type)
@@ -270,10 +268,11 @@ module.exports = class Wallet {
   }
 
   async _fetchAddressHistory (addressId) {
+    console.log('_fetchAddressHistory')
     // retrieves history for an address (does not mutate local record)
     // then retrieves and stores all transactions' data
 
-    const history = await this._electrum.blockchain.address.getHistory(addressId)
+    const history = await this._electrum.blockchain.scripthash.getHistory(addressId)
     const status = this._computeAddressStatus(history)
 
     await Promise.mapSeries(history,
@@ -291,13 +290,16 @@ module.exports = class Wallet {
 
     // take care of not subscribed / outdated addresses
     this._addresses[type] = await Promise.map(this._addresses[type], async address => {
+      const scriptHashBuffer = Buffer.alloc(address.scriptHash.length)
+      address.scriptHash.copy(scriptHashBuffer)
+      const scriptHash = scriptHashBuffer.reverse().toString('hex')
       let status
       if (!address.subscribed) {
-        status = await this._electrum.blockchain.address.subscribe(address.id)
+        status = await this._electrum.blockchain.scripthash.subscribe(scriptHash)
         address.subscribed = true
       } else return address // if already subscribed, no need to pull history
 
-      if (address.status !== status) Object.assign(address, await this._fetchAddressHistory(address.id))
+      if (address.status !== status) Object.assign(address, await this._fetchAddressHistory(scriptHash))
 
       return address
     }, { concurrency: ADDRESSES_UPDATE_CONCURRENCY })
@@ -308,6 +310,8 @@ module.exports = class Wallet {
 
   async _retrieveRawTransaction (hash) {
     if (hash instanceof Buffer) hash = hash.toString('hex')
+
+    console.log('\n>> RAW TRANSACTION', hash)
 
     if (this._rawTransactions[hash]) return this._rawTransactions[hash]
 
@@ -431,8 +435,8 @@ module.exports = class Wallet {
   async _initialize () {
     // initialize secret
     ;({
-      BIP39: () => this._initializeBIP39Secret(),
-      BIP32: () => this._initializeBIP32Secret()
+      BIP39_BIP49: () => this._initializeBIP39BIP49Secret(),
+      BIP49: () => this._initializeBIP49Secret()
     })[this._type.secretType]()
 
     // connect to electrum
@@ -440,8 +444,8 @@ module.exports = class Wallet {
 
     // initialize wallet
     await ({
-      BIP39: () => this._initializeBIP44Wallet(),
-      BIP32: () => this._initializeBIP44Wallet()
+      BIP39_BIP49: () => this._initializeBIP49Wallet(),
+      BIP49: () => this._initializeBIP49Wallet()
     })[this._type.secretType]()
 
     // update initialization-related state props

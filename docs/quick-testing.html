@@ -63,17 +63,17 @@
 <span class="hljs-keyword">const</span> recoveryPhrase = <span class="hljs-string">'final portion lend shoulder law salon dose pool aerobic fire mountain wide defy chimney cash'</span>
 
 <span class="hljs-keyword">const</span> run = <span class="hljs-keyword">async</span> () =&gt; {
-  <span class="hljs-keyword">const</span> wallet = <span class="hljs-keyword">new</span> Wallet(<span class="hljs-string">'bitcoin_electrum_BIP39'</span>, recoveryPhrase, { <span class="hljs-attr">network</span>: <span class="hljs-string">'testnet'</span> })
+  <span class="hljs-keyword">const</span> wallet = <span class="hljs-keyword">new</span> Wallet(<span class="hljs-string">'bitcoin_electrum_BIP39_BIP49'</span>, recoveryPhrase, { <span class="hljs-attr">network</span>: <span class="hljs-string">'testnet'</span> })
 
   <span class="hljs-keyword">await</span> wallet.onReady()
 
-  <span class="hljs-built_in">console</span>.log(wallet._addresses.external)
-  <span class="hljs-built_in">console</span>.log(wallet._addresses.change)
-  <span class="hljs-built_in">console</span>.log(wallet._addresses.external.length)
+  <span class="hljs-comment">/*
 
-  <span class="hljs-keyword">const</span> {type, index} = wallet._getAddressLocationFromId(<span class="hljs-string">'mq7CETgVeRkrh7GtSvMZVWbbo3ANBnk9mM'</span>)
-  <span class="hljs-built_in">console</span>.log(wallet._addresses[type][index])
-  <span class="hljs-built_in">console</span>.log(wallet._transactions[<span class="hljs-string">'2b12eaac53c3ea9be3349ac57e89c31e4f20656afb0a2972b09bf8a2229b7a56'</span>].transaction.toJSON())
+  const {type, index} = wallet._getAddressLocationFromId('mq7CETgVeRkrh7GtSvMZVWbbo3ANBnk9mM')
+  console.log(wallet._addresses[type][index])
+  console.log(wallet._addresses.external.map(x =&gt; x.id))
+  console.log(wallet._transactions['2b12eaac53c3ea9be3349ac57e89c31e4f20656afb0a2972b09bf8a2229b7a56'])
+  */</span>
 }
 
 run().catch(<span class="hljs-built_in">console</span>.error)</pre></div></div>

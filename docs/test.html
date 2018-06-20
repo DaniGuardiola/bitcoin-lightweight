@@ -62,8 +62,8 @@
 <span class="hljs-keyword">const</span> chai = <span class="hljs-built_in">require</span>(<span class="hljs-string">'chai'</span>)
 chai.use(<span class="hljs-built_in">require</span>(<span class="hljs-string">'chai-as-promised'</span>))
 
-<span class="hljs-keyword">const</span> Mnemonic = <span class="hljs-built_in">require</span>(<span class="hljs-string">'bitcore-mnemonic'</span>)
-<span class="hljs-keyword">const</span> { HDPrivateKey } = <span class="hljs-built_in">require</span>(<span class="hljs-string">'bitcore-lib'</span>)
+<span class="hljs-keyword">const</span> bip39 = <span class="hljs-built_in">require</span>(<span class="hljs-string">'bip39'</span>)
+<span class="hljs-keyword">const</span> bitcoin = <span class="hljs-built_in">require</span>(<span class="hljs-string">'bitcoinjs-lib'</span>)
 
 <span class="hljs-keyword">const</span> Wallet = <span class="hljs-built_in">require</span>(<span class="hljs-string">'./main'</span>)
 
@@ -71,8 +71,8 @@ chai.should()
 
 describe(<span class="hljs-string">'Wallet'</span>, () =&gt; {
   <span class="hljs-keyword">const</span> INCORRECT_TYPE = <span class="hljs-string">'this_type_does_not_exist'</span>
-  <span class="hljs-keyword">const</span> CORRECT_TYPE = <span class="hljs-string">'bitcoin_electrum_BIP39'</span>
-  <span class="hljs-keyword">const</span> CORRECT_SECRET = <span class="hljs-keyword">new</span> Mnemonic().toString()
+  <span class="hljs-keyword">const</span> CORRECT_TYPE = <span class="hljs-string">'bitcoin_electrum_BIP39_BIP49'</span>
+  <span class="hljs-keyword">const</span> CORRECT_SECRET = bip39.generateMnemonic()
 
   it(<span class="hljs-string">'throws if no parameters are passed'</span>, () =&gt; {
     ;<span class="hljs-function">(<span class="hljs-params">(</span>) =&gt;</span> <span class="hljs-keyword">new</span> Wallet()).should.throw()
@@ -86,23 +86,25 @@ describe(<span class="hljs-string">'Wallet'</span>, () =&gt; {
     ;<span class="hljs-function">(<span class="hljs-params">(</span>) =&gt;</span> <span class="hljs-keyword">new</span> Wallet(CORRECT_TYPE, CORRECT_SECRET)).should.not.throw()
   })
 
-  it(<span class="hljs-string">'defaults to livenet network'</span>, () =&gt; {
+  it(<span class="hljs-string">'defaults to bitcoin (livenet) network'</span>, () =&gt; {
     <span class="hljs-keyword">const</span> wallet = <span class="hljs-keyword">new</span> Wallet(CORRECT_TYPE, CORRECT_SECRET)
-    wallet._network.constructor.name.should.equal(<span class="hljs-string">'Network'</span>)
-    wallet._network.name.should.equal(<span class="hljs-string">'livenet'</span>)
+    wallet._network.messagePrefix.should.equal(<span class="hljs-string">'\u0018Bitcoin Signed Message:\n'</span>)
+    wallet._network.pubKeyHash.should.equal(<span class="hljs-number">0x00</span>)
+    wallet._networkName.should.equal(<span class="hljs-string">'bitcoin'</span>)
   })
 
   it(<span class="hljs-string">'switches to testnet network when used as option'</span>, () =&gt; {
     <span class="hljs-keyword">const</span> wallet = <span class="hljs-keyword">new</span> Wallet(CORRECT_TYPE, CORRECT_SECRET, { <span class="hljs-attr">network</span>: <span class="hljs-string">'testnet'</span> })
-    wallet._network.constructor.name.should.equal(<span class="hljs-string">'Network'</span>)
-    wallet._network.name.should.equal(<span class="hljs-string">'testnet'</span>)
+    wallet._network.messagePrefix.should.equal(<span class="hljs-string">'\u0018Bitcoin Signed Message:\n'</span>)
+    wallet._network.pubKeyHash.should.equal(<span class="hljs-number">0x6f</span>)
+    wallet._networkName.should.equal(<span class="hljs-string">'testnet'</span>)
   })
 
   describe(<span class="hljs-string">'.create()'</span>, () =&gt; {
-    describe(<span class="hljs-string">'Bitcoin electrum BIP39'</span>, () =&gt; {
-      <span class="hljs-keyword">const</span> TYPE_ID = <span class="hljs-string">'bitcoin_electrum_BIP39'</span>
+    describe(<span class="hljs-string">'Bitcoin electrum BIP39_BIP49'</span>, () =&gt; {
+      <span class="hljs-keyword">const</span> TYPE_ID = <span class="hljs-string">'bitcoin_electrum_BIP39_BIP49'</span>
       <span class="hljs-keyword">const</span> CURRENCY = <span class="hljs-string">'BTC'</span>
-      <span class="hljs-keyword">const</span> SECRET_TYPE = <span class="hljs-string">'BIP39'</span>
+      <span class="hljs-keyword">const</span> SECRET_TYPE = <span class="hljs-string">'BIP39_BIP49'</span>
       it(<span class="hljs-string">'creates a Wallet instance with the correct data'</span>, () =&gt; {
         <span class="hljs-keyword">const</span> wallet = Wallet.create(TYPE_ID)
         wallet._type.currency.should.equal(CURRENCY)
@@ -110,11 +112,11 @@ describe(<span class="hljs-string">'Wallet'</span>, () =&gt; {
       })
     })
 
-    describe(<span class="hljs-string">'Bitcoin electrum BIP32'</span>, () =&gt; {
+    describe(<span class="hljs-string">'Bitcoin electrum BIP49'</span>, () =&gt; {
       it(<span class="hljs-string">'creates a Wallet instance with the correct data'</span>, () =&gt; {
-        <span class="hljs-keyword">const</span> TYPE_ID = <span class="hljs-string">'bitcoin_electrum_BIP32'</span>
+        <span class="hljs-keyword">const</span> TYPE_ID = <span class="hljs-string">'bitcoin_electrum_BIP49'</span>
         <span class="hljs-keyword">const</span> CURRENCY = <span class="hljs-string">'BTC'</span>
-        <span class="hljs-keyword">const</span> SECRET_TYPE = <span class="hljs-string">'BIP32'</span>
+        <span class="hljs-keyword">const</span> SECRET_TYPE = <span class="hljs-string">'BIP49'</span>
 
         <span class="hljs-keyword">const</span> wallet = Wallet.create(TYPE_ID)
         wallet._type.currency.should.equal(CURRENCY)
@@ -123,49 +125,54 @@ describe(<span class="hljs-string">'Wallet'</span>, () =&gt; {
     })
   })
 
-  describe(<span class="hljs-string">'Bitcoin electrum BIP39 type'</span>, () =&gt; {
-    <span class="hljs-keyword">const</span> TYPE_ID = <span class="hljs-string">'bitcoin_electrum_BIP39'</span>
-    <span class="hljs-keyword">const</span> INCORRECT_SECRET_SEED = <span class="hljs-string">'i am not a correct secret seed'</span>
-    <span class="hljs-keyword">const</span> mnemonic = <span class="hljs-keyword">new</span> Mnemonic()
-    <span class="hljs-keyword">const</span> CORRECT_SECRET_SEED = mnemonic.toString()
-    <span class="hljs-keyword">const</span> DERIVED_HD_KEY = mnemonic.toHDPrivateKey()
+  describe(<span class="hljs-string">'Bitcoin electrum BIP39_BIP49 type'</span>, () =&gt; {
+    <span class="hljs-keyword">const</span> TYPE_ID = <span class="hljs-string">'bitcoin_electrum_BIP39_BIP49'</span>
+    <span class="hljs-keyword">const</span> INCORRECT_SECRET_MNEMONIC = <span class="hljs-string">'i am not a correct secret seed'</span>
+    <span class="hljs-keyword">const</span> CORRECT_SECRET_MNEMONIC = bip39.generateMnemonic()
+    <span class="hljs-keyword">const</span> seed = bip39.mnemonicToSeed(CORRECT_SECRET_MNEMONIC)
+    <span class="hljs-keyword">const</span> DERIVED_HD_NODE = bitcoin.HDNode.fromSeedBuffer(seed)
     <span class="hljs-keyword">const</span> PASSPHRASE = <span class="hljs-string">'this is a passphrase'</span>
-    <span class="hljs-keyword">const</span> DERIVED_HD_KEY_WITH_PASSPHRASE = mnemonic.toHDPrivateKey(PASSPHRASE)
+    <span class="hljs-keyword">const</span> seedPassphrase = bip39.mnemonicToSeed(CORRECT_SECRET_MNEMONIC, PASSPHRASE)
+    <span class="hljs-keyword">const</span> DERIVED_HD_NODE_WITH_PASSPHRASE = bitcoin.HDNode.fromSeedBuffer(seedPassphrase)
 
     it(<span class="hljs-string">'throws if no secret is provided'</span>, () =&gt; {
       ;<span class="hljs-function">(<span class="hljs-params">(</span>) =&gt;</span> <span class="hljs-keyword">new</span> Wallet(TYPE_ID)).should.throw()
     })
 
     it(<span class="hljs-string">'throws if secret seed is not correct'</span>, () =&gt; {
-      ;<span class="hljs-function">(<span class="hljs-params">(</span>) =&gt;</span> <span class="hljs-keyword">new</span> Wallet(TYPE_ID, INCORRECT_SECRET_SEED)).should.throw()
+      ;<span class="hljs-function">(<span class="hljs-params">(</span>) =&gt;</span> <span class="hljs-keyword">new</span> Wallet(TYPE_ID, INCORRECT_SECRET_MNEMONIC)).should.throw()
     })
 
     it(<span class="hljs-string">'does not throw if secret seed is correct'</span>, () =&gt; {
-      ;<span class="hljs-function">(<span class="hljs-params">(</span>) =&gt;</span> <span class="hljs-keyword">new</span> Wallet(TYPE_ID, CORRECT_SECRET_SEED)).should.not.throw()
+      ;<span class="hljs-function">(<span class="hljs-params">(</span>) =&gt;</span> <span class="hljs-keyword">new</span> Wallet(TYPE_ID, CORRECT_SECRET_MNEMONIC)).should.not.throw()
     })
 
     it(<span class="hljs-string">'derives the correct HD private key from mnemonic'</span>, <span class="hljs-keyword">async</span> () =&gt; {
-      <span class="hljs-keyword">const</span> wallet = <span class="hljs-keyword">new</span> Wallet(TYPE_ID, CORRECT_SECRET_SEED)
+      <span class="hljs-keyword">const</span> wallet = <span class="hljs-keyword">new</span> Wallet(TYPE_ID, CORRECT_SECRET_MNEMONIC)
       <span class="hljs-keyword">await</span> wallet.onReady()
-      wallet._rootHDPrivateKey.constructor.name.should.equal(<span class="hljs-string">'HDPrivateKey'</span>)
-      wallet._rootHDPrivateKey.toString().should.equal(DERIVED_HD_KEY.toString())
+      <span class="hljs-built_in">console</span>.log(wallet._rootHDNode)
+      wallet._rootHDNode.constructor.name.should.equal(<span class="hljs-string">'HDNode'</span>)
+      wallet._rootHDNode.toString().should.equal(DERIVED_HD_NODE.toString())
     })
 
     it(<span class="hljs-string">'derives the correct HD private key from mnemonic and passphrase'</span>, <span class="hljs-keyword">async</span> () =&gt; {
       <span class="hljs-keyword">const</span> wallet = <span class="hljs-keyword">new</span> Wallet(TYPE_ID, {
-        <span class="hljs-attr">seed</span>: CORRECT_SECRET_SEED,
+        <span class="hljs-attr">seed</span>: CORRECT_SECRET_MNEMONIC,
         <span class="hljs-attr">passphrase</span>: PASSPHRASE
       })
       <span class="hljs-keyword">await</span> wallet.onReady()
-      wallet._rootHDPrivateKey.constructor.name.should.equal(<span class="hljs-string">'HDPrivateKey'</span>)
-      wallet._rootHDPrivateKey.toString().should.equal(DERIVED_HD_KEY_WITH_PASSPHRASE.toString())
+      wallet._rootHDNode.constructor.name.should.equal(<span class="hljs-string">'HDNode'</span>)
+      wallet._rootHDNode.toString().should.equal(DERIVED_HD_NODE_WITH_PASSPHRASE.toString())
     })
   })
 
-  describe(<span class="hljs-string">'Bitcoin electrum BIP32 type'</span>, () =&gt; {
-    <span class="hljs-keyword">const</span> TYPE_ID = <span class="hljs-string">'bitcoin_electrum_BIP32'</span>
+  describe(<span class="hljs-string">'Bitcoin electrum BIP49 type'</span>, () =&gt; {
+    <span class="hljs-keyword">const</span> TYPE_ID = <span class="hljs-string">'bitcoin_electrum_BIP49'</span>
     <span class="hljs-keyword">const</span> INCORRECT_SECRET_KEY = <span class="hljs-string">'i am not a correct secret key'</span>
-    <span class="hljs-keyword">const</span> CORRECT_SECRET_KEY = <span class="hljs-keyword">new</span> HDPrivateKey().toString()
+    <span class="hljs-keyword">const</span> mnemonic = bip39.generateMnemonic()
+    <span class="hljs-keyword">const</span> seed = bip39.mnemonicToSeed(mnemonic)
+    <span class="hljs-keyword">const</span> hdNode = bitcoin.HDNode.fromSeedBuffer(seed)
+    <span class="hljs-keyword">const</span> CORRECT_SECRET_KEY = hdNode.toBase58()
 
     it(<span class="hljs-string">'throws if no secret is provided'</span>, () =&gt; {
       ;<span class="hljs-function">(<span class="hljs-params">(</span>) =&gt;</span> <span class="hljs-keyword">new</span> Wallet(TYPE_ID)).should.throw()
@@ -182,8 +189,8 @@ describe(<span class="hljs-string">'Wallet'</span>, () =&gt; {
     it(<span class="hljs-string">'stores the correct HD private key'</span>, <span class="hljs-keyword">async</span> () =&gt; {
       <span class="hljs-keyword">const</span> wallet = <span class="hljs-keyword">new</span> Wallet(TYPE_ID, CORRECT_SECRET_KEY)
       <span class="hljs-keyword">await</span> wallet.onReady()
-      wallet._rootHDPrivateKey.constructor.name.should.equal(<span class="hljs-string">'HDPrivateKey'</span>)
-      wallet._rootHDPrivateKey.toString().should.equal(CORRECT_SECRET_KEY)
+      wallet._rootHDNode.constructor.name.should.equal(<span class="hljs-string">'HDNode'</span>)
+      wallet._rootHDNode.toString().should.equal(CORRECT_SECRET_KEY)
     })
   })
 })</pre></div></div>

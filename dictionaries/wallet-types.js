@@ -6,24 +6,24 @@ const walletTypes = {}
 
 const BTC = {
   currency: 'BTC',
-  BIP44CoinTypes: {
-    livenet: 0,
+  BIP49CoinTypes: {
+    bitcoin: 0,
     testnet: 1
   }
 }
 
 // bitcoin electrum BIP39 (mnemonic word-list string for Hierarchical Deterministic Keys generation)
 
-const BIP39_SEED_SCHEMA = Joi.string().bitcoreMnemonic()
+const BIP39_SEED_SCHEMA = Joi.string().bip39()
 
-walletTypes.bitcoin_electrum_BIP39 = Object.assign({}, BTC, {
-  secretType: 'BIP39',
+walletTypes.bitcoin_electrum_BIP39_BIP49 = Object.assign({}, BTC, {
+  secretType: 'BIP39_BIP49',
 
   // secret can be in two formats:
-  // - string: '<mnemonic seed>'
-  // - object: { seed: '<mnemonic seed>', passphrase: '<hd key passphrase>' (optional) }
+  // - string: '<bip39 seed>'
+  // - object: { seed: '<bip39 seed>', passphrase: '<hd key passphrase>' (optional) }
 
-  secretSchema: Joi.alternatives().try( // TODO: validate mnemonic?
+  secretSchema: Joi.alternatives().try( // TODO: validate bip39?
     BIP39_SEED_SCHEMA,
     Joi.object({
       seed: BIP39_SEED_SCHEMA.required(),
@@ -34,9 +34,9 @@ walletTypes.bitcoin_electrum_BIP39 = Object.assign({}, BTC, {
 
 // bitcoin electrum BIP32 (Hierarchical Deterministic Keys) - BIP44 format
 
-walletTypes.bitcoin_electrum_BIP32 = Object.assign({}, BTC, {
-  secretType: 'BIP32',
-  secretSchema: Joi.string().HDPrivateKey().required() // TODO, TODO: validate HD key?
+walletTypes.bitcoin_electrum_BIP49 = Object.assign({}, BTC, {
+  secretType: 'BIP49',
+  secretSchema: Joi.string().hdPrivateKey().required()
 })
 
 /* Note:

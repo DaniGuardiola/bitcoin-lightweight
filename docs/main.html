@@ -64,10 +64,9 @@
 <span class="hljs-keyword">const</span> Joi = <span class="hljs-built_in">require</span>(<span class="hljs-string">'./lib/joi'</span>)
 <span class="hljs-keyword">const</span> <span class="hljs-built_in">Promise</span> = <span class="hljs-built_in">require</span>(<span class="hljs-string">'bluebird'</span>)
 <span class="hljs-keyword">const</span> Electrum = <span class="hljs-built_in">require</span>(<span class="hljs-string">'electrum-client'</span>)
-<span class="hljs-keyword">const</span> sha256 = <span class="hljs-built_in">require</span>(<span class="hljs-string">'js-sha256'</span>)
 
-<span class="hljs-keyword">const</span> Mnemonic = <span class="hljs-built_in">require</span>(<span class="hljs-string">'bitcore-mnemonic'</span>)
-<span class="hljs-keyword">const</span> { HDPrivateKey, Networks, Transaction, Script } = <span class="hljs-built_in">require</span>(<span class="hljs-string">'bitcore-lib'</span>)</pre></div></div>
+<span class="hljs-keyword">const</span> bip39 = <span class="hljs-built_in">require</span>(<span class="hljs-string">'bip39'</span>)
+<span class="hljs-keyword">const</span> bitcoin = <span class="hljs-built_in">require</span>(<span class="hljs-string">'bitcoinjs-lib'</span>)</pre></div></div>
             
         </li>
         
@@ -99,7 +98,7 @@
 <span class="hljs-keyword">const</span> WALLET_TYPE_LIST = <span class="hljs-built_in">Object</span>.keys(WALLET_TYPES)
 <span class="hljs-keyword">const</span> DEFAULT_GAP_LIMIT = <span class="hljs-number">20</span>
 <span class="hljs-keyword">const</span> CHANGE_GAP_LIMIT = <span class="hljs-number">5</span>
-<span class="hljs-keyword">const</span> ADDRESSES_UPDATE_CONCURRENCY = <span class="hljs-number">20</span>
+<span class="hljs-keyword">const</span> ADDRESSES_UPDATE_CONCURRENCY = <span class="hljs-number">1</span> <span class="hljs-comment">// 20</span>
 <span class="hljs-keyword">const</span> TRANSACTION_RETRIEVAL_CONCURRENCY = <span class="hljs-number">5</span>
 
 <span class="hljs-comment">/**
@@ -157,11 +156,12 @@
             </div>
             
             <div class="content"><div class='highlight'><pre>    options = Joi.attempt(options, Joi.object({
-      <span class="hljs-attr">network</span>: Joi.string().valid([<span class="hljs-string">'livenet'</span>, <span class="hljs-string">'testnet'</span>]).default(<span class="hljs-string">'livenet'</span>),
+      <span class="hljs-attr">network</span>: Joi.string().valid([<span class="hljs-string">'bitcoin'</span>, <span class="hljs-string">'testnet'</span>]).default(<span class="hljs-string">'bitcoin'</span>),
       <span class="hljs-attr">gapLimit</span>: Joi.number().integer().positive().max(<span class="hljs-number">100</span>).default(DEFAULT_GAP_LIMIT)
     }))
 
-    <span class="hljs-keyword">this</span>._network = Networks.get(options.network)
+    <span class="hljs-keyword">this</span>._networkName = options.network
+    <span class="hljs-keyword">this</span>._network = bitcoin.networks[options.network]
     <span class="hljs-keyword">this</span>._gapLimit = options.gapLimit</pre></div></div>
             
         </li>
@@ -293,7 +293,7 @@
             <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">if</span> (!<span class="hljs-keyword">this</span>._initialized) <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> <span class="hljs-built_in">Error</span>(<span class="hljs-string">'Wallet is not initialized yet'</span>)
   }
 
-  _initializeBIP39Secret () {</pre></div></div>
+  _initializeBIP39BIP49Secret () {</pre></div></div>
             
         </li>
         
@@ -359,11 +359,11 @@ false =&gt; object (seed + optional passphrase) format</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">const</span> mnemonic = <span class="hljs-keyword">new</span> Mnemonic(seed)
-    <span class="hljs-keyword">this</span>._rootHDPrivateKey = mnemonic.toHDPrivateKey(passphrase, <span class="hljs-keyword">this</span>._network)
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">const</span> mnemonic = bip39.mnemonicToSeed(seed, passphrase)
+    <span class="hljs-keyword">this</span>._rootHDNode = bitcoin.HDNode.fromSeedBuffer(mnemonic, <span class="hljs-keyword">this</span>._network)
   }
 
-  _initializeBIP32Secret () {</pre></div></div>
+  _initializeBIP49Secret () {</pre></div></div>
             
         </li>
         
@@ -391,7 +391,7 @@ false =&gt; object (seed + optional passphrase) format</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">this</span>._rootHDPrivateKey = <span class="hljs-keyword">new</span> HDPrivateKey(<span class="hljs-keyword">this</span>._secret, <span class="hljs-keyword">this</span>._network) <span class="hljs-comment">// <span class="hljs-doctag">TODO:</span> not sure if network works here</span>
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">this</span>._rootHDNode = bitcoin.HDNode.fromBase58(<span class="hljs-keyword">this</span>._secret, <span class="hljs-keyword">this</span>._network)
   }
 
   <span class="hljs-keyword">async</span> _onInitialized () {</pre></div></div>
@@ -426,7 +426,7 @@ statements after it will be run only if/once wallet is initialized</p>
             <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">if</span> (!<span class="hljs-keyword">this</span>._initialized) <span class="hljs-keyword">return</span> <span class="hljs-keyword">this</span>._initializationPromise
   }
 
-  <span class="hljs-keyword">async</span> _initializeBIP44Wallet () {</pre></div></div>
+  <span class="hljs-keyword">async</span> _initializeBIP49Wallet () {</pre></div></div>
             
         </li>
         
@@ -441,7 +441,7 @@ statements after it will be run only if/once wallet is initialized</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">const</span> BIP44CoinType = <span class="hljs-keyword">this</span>._type.BIP44CoinTypes[<span class="hljs-keyword">this</span>._network.name]</pre></div></div>
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">const</span> BIP49CoinType = <span class="hljs-keyword">this</span>._type.BIP49CoinTypes[<span class="hljs-keyword">this</span>._networkName]</pre></div></div>
             
         </li>
         
@@ -456,10 +456,10 @@ statements after it will be run only if/once wallet is initialized</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">const</span> mainAccountHDPrivateKey = <span class="hljs-keyword">this</span>._rootHDPrivateKey.derive(<span class="hljs-string">`m/44'/<span class="hljs-subst">${BIP44CoinType}</span>'/0'`</span>)
-    <span class="hljs-keyword">this</span>._mainAccountHDPrivateKeys = {
-      <span class="hljs-attr">external</span>: mainAccountHDPrivateKey.derive(<span class="hljs-number">0</span>),
-      <span class="hljs-attr">change</span>: mainAccountHDPrivateKey.derive(<span class="hljs-number">1</span>)
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">const</span> mainAccountHDNode = <span class="hljs-keyword">this</span>._rootHDNode.derivePath(<span class="hljs-string">`m/49'/<span class="hljs-subst">${BIP49CoinType}</span>'/0'`</span>)
+    <span class="hljs-keyword">this</span>._mainAccountHDNodes = {
+      <span class="hljs-attr">external</span>: mainAccountHDNode.derive(<span class="hljs-number">0</span>),
+      <span class="hljs-attr">change</span>: mainAccountHDNode.derive(<span class="hljs-number">1</span>)
     }</pre></div></div>
             
         </li>
@@ -489,11 +489,12 @@ statements after it will be run only if/once wallet is initialized</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-26">&#182;</a>
               </div>
-              <p>initialize transactions object</p>
+              <p>initialize transaction objects</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">this</span>._transactions = {}</pre></div></div>
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">this</span>._transactions = {}
+    <span class="hljs-keyword">this</span>._rawTransactions = {}</pre></div></div>
             
         </li>
         
@@ -508,7 +509,7 @@ statements after it will be run only if/once wallet is initialized</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">this</span>._electrum.subscribe.on(<span class="hljs-string">'blockchain.address.subscribe'</span>, <span class="hljs-keyword">async</span> params =&gt; {
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">this</span>._electrum.subscribe.on(<span class="hljs-string">'blockchain.scripthash.subscribe'</span>, <span class="hljs-keyword">async</span> params =&gt; {
       <span class="hljs-keyword">await</span> <span class="hljs-keyword">this</span>._updateAddressHistoryById(params[<span class="hljs-number">0</span>])
       <span class="hljs-keyword">return</span> <span class="hljs-keyword">this</span>._update()
     })</pre></div></div>
@@ -527,6 +528,10 @@ statements after it will be run only if/once wallet is initialized</p>
             </div>
             
             <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">return</span> <span class="hljs-keyword">this</span>._update()
+  }
+
+  _deriveHDNode (type, index) {
+    <span class="hljs-keyword">return</span> <span class="hljs-keyword">this</span>._mainAccountHDNodes[type].derive(index)
   }</pre></div></div>
             
         </li>
@@ -572,11 +577,15 @@ statements after it will be run only if/once wallet is initialized</p>
             </div>
             
             <div class="content"><div class='highlight'><pre>
-    <span class="hljs-keyword">const</span> hdPrivateKey = <span class="hljs-keyword">this</span>._mainAccountHDPrivateKeys[type].derive(index)
-    <span class="hljs-keyword">const</span> privateKey = hdPrivateKey.privateKey
-    <span class="hljs-keyword">const</span> publicKey = hdPrivateKey.publicKey
-    <span class="hljs-keyword">const</span> address = privateKey.toAddress()
-    <span class="hljs-keyword">const</span> id = address.toString()</pre></div></div>
+    <span class="hljs-keyword">const</span> hdNode = <span class="hljs-keyword">this</span>._deriveHDNode(type, index)
+
+    <span class="hljs-keyword">const</span> keyhash = bitcoin.crypto.hash160(hdNode.getPublicKeyBuffer())
+    <span class="hljs-keyword">const</span> scriptSig = bitcoin.script.witnessPubKeyHash.output.encode(keyhash)
+    <span class="hljs-keyword">const</span> addressBytes = bitcoin.crypto.hash160(scriptSig)
+    <span class="hljs-keyword">const</span> outputScript = bitcoin.script.scriptHash.output.encode(addressBytes)
+
+    <span class="hljs-keyword">const</span> id = bitcoin.address.fromOutputScript(outputScript, <span class="hljs-keyword">this</span>._network)
+    <span class="hljs-keyword">const</span> scriptHash = bitcoin.crypto.sha256(scriptSig)</pre></div></div>
             
         </li>
         
@@ -593,10 +602,8 @@ statements after it will be run only if/once wallet is initialized</p>
             
             <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">return</span> {
       id,
+      scriptHash,
       type,
-      privateKey,
-      publicKey,
-      address,
       <span class="hljs-attr">subscribed</span>: <span class="hljs-literal">false</span>,
       <span class="hljs-attr">status</span>: <span class="hljs-literal">null</span>,
       <span class="hljs-attr">history</span>: [],
@@ -731,7 +738,7 @@ statements after it will be run only if/once wallet is initialized</p>
             </div>
             
             <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">if</span> (!history.length) <span class="hljs-keyword">return</span> <span class="hljs-literal">null</span>
-    <span class="hljs-keyword">return</span> sha256(history
+    <span class="hljs-keyword">return</span> bitcoin.crypto.sha256(history
       .sort(<span class="hljs-function">(<span class="hljs-params">a, b</span>) =&gt;</span> {
         <span class="hljs-keyword">if</span> (a.height &lt;= <span class="hljs-number">0</span>) <span class="hljs-keyword">return</span> <span class="hljs-number">1</span>
         <span class="hljs-keyword">if</span> (a.height === b.height) <span class="hljs-keyword">return</span> <span class="hljs-number">0</span>
@@ -807,16 +814,17 @@ statements after it will be run only if/once wallet is initialized</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-43">&#182;</a>
               </div>
-              <p>if not found, throw an error</p>
+              <p>if not found, return false</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">if</span> (index &lt; <span class="hljs-number">0</span>) <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> <span class="hljs-built_in">Error</span>(<span class="hljs-string">`Address '<span class="hljs-subst">${addressId}</span>' could not be found`</span>)
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">if</span> (index &lt; <span class="hljs-number">0</span>) <span class="hljs-keyword">return</span> <span class="hljs-literal">false</span>
 
     <span class="hljs-keyword">return</span> { type, index }
   }
 
-  <span class="hljs-keyword">async</span> _updateAddressHistoryById (id, type) {</pre></div></div>
+  <span class="hljs-keyword">async</span> _updateAddressHistoryById (id, type) {
+    <span class="hljs-built_in">console</span>.log(<span class="hljs-string">'_updateAddressHistoryById'</span>)</pre></div></div>
             
         </li>
         
@@ -841,7 +849,8 @@ statements after it will be run only if/once wallet is initialized</p>
     <span class="hljs-built_in">Object</span>.assign(<span class="hljs-keyword">this</span>._addresses[type][index], <span class="hljs-keyword">await</span> <span class="hljs-keyword">this</span>._fetchAddressHistory(<span class="hljs-keyword">this</span>._addresses[type][index].id))
   }
 
-  <span class="hljs-keyword">async</span> _fetchAddressHistory (addressId) {</pre></div></div>
+  <span class="hljs-keyword">async</span> _fetchAddressHistory (addressId) {
+    <span class="hljs-built_in">console</span>.log(<span class="hljs-string">'_fetchAddressHistory'</span>)</pre></div></div>
             
         </li>
         
@@ -858,11 +867,13 @@ then retrieves and stores all transactions’ data</p>
             </div>
             
             <div class="content"><div class='highlight'><pre>
-    <span class="hljs-keyword">const</span> history = <span class="hljs-keyword">await</span> <span class="hljs-keyword">this</span>._electrum.blockchain.address.getHistory(addressId)
+    <span class="hljs-keyword">const</span> history = <span class="hljs-keyword">await</span> <span class="hljs-keyword">this</span>._electrum.blockchain.scripthash.getHistory(addressId)
     <span class="hljs-keyword">const</span> status = <span class="hljs-keyword">this</span>._computeAddressStatus(history)
 
-    <span class="hljs-keyword">await</span> <span class="hljs-built_in">Promise</span>.map(history,
-      tx =&gt; <span class="hljs-keyword">this</span>._retrieveTransaction(tx.tx_hash),
+    <span class="hljs-keyword">await</span> <span class="hljs-built_in">Promise</span>.mapSeries(history,
+      tx =&gt; {
+        <span class="hljs-keyword">return</span> <span class="hljs-keyword">this</span>._retrieveTransaction(tx.tx_hash, tx.height)
+      },
       { <span class="hljs-attr">concurrency</span>: TRANSACTION_RETRIEVAL_CONCURRENCY })
 
     <span class="hljs-keyword">return</span> { history, status }
@@ -883,7 +894,7 @@ then retrieves and stores all transactions’ data</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">if</span> (!type) <span class="hljs-keyword">return</span> <span class="hljs-built_in">Promise</span>.map([<span class="hljs-string">'external'</span>, <span class="hljs-string">'change'</span>], type =&gt; <span class="hljs-keyword">this</span>._updateAddresses(type))</pre></div></div>
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">if</span> (!type) <span class="hljs-keyword">return</span> <span class="hljs-built_in">Promise</span>.mapSeries([<span class="hljs-string">'external'</span>, <span class="hljs-string">'change'</span>], type =&gt; <span class="hljs-keyword">this</span>._updateAddresses(type))</pre></div></div>
             
         </li>
         
@@ -899,15 +910,16 @@ then retrieves and stores all transactions’ data</p>
             </div>
             
             <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">this</span>._addresses[type] = <span class="hljs-keyword">await</span> <span class="hljs-built_in">Promise</span>.map(<span class="hljs-keyword">this</span>._addresses[type], <span class="hljs-keyword">async</span> address =&gt; {
+      <span class="hljs-keyword">const</span> scriptHashBuffer = Buffer.alloc(address.scriptHash.length)
+      address.scriptHash.copy(scriptHashBuffer)
+      <span class="hljs-keyword">const</span> scriptHash = scriptHashBuffer.reverse().toString(<span class="hljs-string">'hex'</span>)
       <span class="hljs-keyword">let</span> status
       <span class="hljs-keyword">if</span> (!address.subscribed) {
-        <span class="hljs-built_in">console</span>.log(<span class="hljs-keyword">this</span>._electrum.blockchain)
-        <span class="hljs-built_in">console</span>.log(address)
-        status = <span class="hljs-keyword">await</span> <span class="hljs-keyword">this</span>._electrum.blockchain.address.subscribe(address.id)
+        status = <span class="hljs-keyword">await</span> <span class="hljs-keyword">this</span>._electrum.blockchain.scripthash.subscribe(scriptHash)
         address.subscribed = <span class="hljs-literal">true</span>
       } <span class="hljs-keyword">else</span> <span class="hljs-keyword">return</span> address <span class="hljs-comment">// if already subscribed, no need to pull history</span>
 
-      <span class="hljs-keyword">if</span> (address.status !== status) <span class="hljs-built_in">Object</span>.assign(address, <span class="hljs-keyword">await</span> <span class="hljs-keyword">this</span>._fetchAddressHistory(address.id))
+      <span class="hljs-keyword">if</span> (address.status !== status) <span class="hljs-built_in">Object</span>.assign(address, <span class="hljs-keyword">await</span> <span class="hljs-keyword">this</span>._fetchAddressHistory(scriptHash))
 
       <span class="hljs-keyword">return</span> address
     }, { <span class="hljs-attr">concurrency</span>: ADDRESSES_UPDATE_CONCURRENCY })
@@ -940,9 +952,25 @@ then retrieves and stores all transactions’ data</p>
             </div>
             
             <div class="content"><div class='highlight'><pre>
-  <span class="hljs-keyword">async</span> _retrieveTransaction (hash) {
+  <span class="hljs-keyword">async</span> _retrieveRawTransaction (hash) {
+    <span class="hljs-keyword">if</span> (hash <span class="hljs-keyword">instanceof</span> Buffer) hash = hash.toString(<span class="hljs-string">'hex'</span>)
+
+    <span class="hljs-built_in">console</span>.log(<span class="hljs-string">'\n&gt;&gt; RAW TRANSACTION'</span>, hash)
+
+    <span class="hljs-keyword">if</span> (<span class="hljs-keyword">this</span>._rawTransactions[hash]) <span class="hljs-keyword">return</span> <span class="hljs-keyword">this</span>._rawTransactions[hash]
+
     <span class="hljs-keyword">const</span> hex = <span class="hljs-keyword">await</span> <span class="hljs-keyword">this</span>._electrum.blockchain.transaction.get(hash)
-    <span class="hljs-keyword">const</span> transaction = <span class="hljs-keyword">new</span> Transaction(hex)</pre></div></div>
+    <span class="hljs-keyword">const</span> tx = {
+      hex,
+      <span class="hljs-attr">transaction</span>: bitcoin.Transaction.fromHex(hex)
+    }
+
+    <span class="hljs-keyword">this</span>._rawTransactions[hash] = tx
+    <span class="hljs-keyword">return</span> tx
+  }
+
+  <span class="hljs-keyword">async</span> _retrieveTransaction (hash, height) {
+    <span class="hljs-keyword">if</span> (hash <span class="hljs-keyword">instanceof</span> Buffer) hash = hash.toString(<span class="hljs-string">'hex'</span>)</pre></div></div>
             
         </li>
         
@@ -953,9 +981,109 @@ then retrieves and stores all transactions’ data</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-50">&#182;</a>
               </div>
-              <p>const { inputs, outputs } = transaction</p>
+              <p>TODO: handle height change (unconfirmed parents &gt; confirmed parents in mempool &gt; confirmed)</p>
 
             </div>
+            
+            <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">if</span> (<span class="hljs-keyword">this</span>._transactions[hash]) <span class="hljs-keyword">return</span> <span class="hljs-keyword">this</span>._transactions[hash]
+
+    <span class="hljs-keyword">const</span> { transaction } = <span class="hljs-keyword">await</span> <span class="hljs-keyword">this</span>._retrieveRawTransaction(hash)
+
+    <span class="hljs-built_in">console</span>.log(<span class="hljs-string">'\n\n\n\n\n&gt;&gt; TRANSACTION'</span>, hash)
+
+    <span class="hljs-built_in">console</span>.log(transaction)
+
+    <span class="hljs-keyword">const</span> { ins, outs } = transaction
+
+    <span class="hljs-keyword">const</span> inputAddresses = []
+    <span class="hljs-keyword">const</span> inputExternalAddresses = []
+    <span class="hljs-keyword">let</span> inputBalance = <span class="hljs-number">0</span>
+    <span class="hljs-keyword">let</span> inputOwnedBalance = <span class="hljs-number">0</span>
+
+    <span class="hljs-built_in">console</span>.log(<span class="hljs-string">'\n\n==== INS  ===='</span>)
+
+    <span class="hljs-keyword">await</span> <span class="hljs-built_in">Promise</span>.map(ins, <span class="hljs-keyword">async</span> input =&gt; {
+      <span class="hljs-built_in">console</span>.log(<span class="hljs-string">'\n&gt; TYPE'</span>, bitcoin.script.classifyInput(input.script))
+      <span class="hljs-keyword">const</span> { <span class="hljs-attr">transaction</span>: originalTx } = <span class="hljs-keyword">await</span> <span class="hljs-keyword">this</span>._retrieveRawTransaction(input.hash.reverse())
+      <span class="hljs-keyword">const</span> originalOutput = originalTx.outs[input.index]
+      <span class="hljs-keyword">const</span> address = bitcoin.address.fromOutputScript(originalOutput.script, <span class="hljs-keyword">this</span>._network)
+      <span class="hljs-keyword">const</span> addressInfo = <span class="hljs-keyword">this</span>._getAddressLocationFromId(address)
+      <span class="hljs-keyword">if</span> (addressInfo) inputOwnedBalance += originalOutput.value
+      <span class="hljs-keyword">else</span> inputExternalAddresses.push(address)
+      inputBalance += originalOutput.value
+      inputAddresses.push(address)
+      <span class="hljs-built_in">console</span>.log(address)
+      <span class="hljs-built_in">console</span>.log(addressInfo)
+    })
+
+    <span class="hljs-built_in">console</span>.log(<span class="hljs-string">'\n\n\n\n'</span>)
+    <span class="hljs-built_in">console</span>.log(<span class="hljs-string">'INPUT BALANCE'</span>, inputBalance)
+    <span class="hljs-built_in">console</span>.log(<span class="hljs-string">'INPUT OWNED BALANCE'</span>, inputOwnedBalance)
+    <span class="hljs-built_in">console</span>.log(<span class="hljs-string">'INPUT EXTERNAL ADDRESSES'</span>, inputExternalAddresses)
+
+    <span class="hljs-keyword">const</span> allInputOwned = inputBalance === inputOwnedBalance
+
+    <span class="hljs-built_in">console</span>.log(<span class="hljs-string">'ALL INPUT OWNED'</span>, allInputOwned)
+
+    <span class="hljs-built_in">console</span>.log(<span class="hljs-string">'\n\n==== OUTS ===='</span>)
+
+    <span class="hljs-keyword">const</span> outputAddresses = []
+    <span class="hljs-keyword">const</span> outputExternalAddresses = []
+    <span class="hljs-keyword">let</span> outputBalance = <span class="hljs-number">0</span>
+    <span class="hljs-keyword">let</span> outputOwnedBalance = <span class="hljs-number">0</span>
+
+    outs.forEach(<span class="hljs-function"><span class="hljs-params">output</span> =&gt;</span> {
+      <span class="hljs-built_in">console</span>.log(<span class="hljs-string">'\n&gt; TYPE'</span>, bitcoin.script.classifyOutput(output.script))
+      <span class="hljs-keyword">const</span> address = bitcoin.address.fromOutputScript(output.script, <span class="hljs-keyword">this</span>._network)
+      <span class="hljs-keyword">const</span> addressInfo = <span class="hljs-keyword">this</span>._getAddressLocationFromId(address)
+      <span class="hljs-keyword">if</span> (addressInfo) outputOwnedBalance += output.value
+      <span class="hljs-keyword">else</span> outputExternalAddresses.push(address)
+      outputBalance += output.value
+      outputAddresses.push(address)
+      <span class="hljs-built_in">console</span>.log(address)
+      <span class="hljs-built_in">console</span>.log(addressInfo)
+    })
+
+    <span class="hljs-built_in">console</span>.log(<span class="hljs-string">'\n\n\n\n'</span>)
+    <span class="hljs-built_in">console</span>.log(<span class="hljs-string">'OUTPUT BALANCE'</span>, outputBalance)
+    <span class="hljs-built_in">console</span>.log(<span class="hljs-string">'OUTPUT OWNED BALANCE'</span>, outputOwnedBalance)
+    <span class="hljs-built_in">console</span>.log(<span class="hljs-string">'OUTPUT EXTERNAL ADDRESSES'</span>, outputExternalAddresses)
+
+    <span class="hljs-keyword">const</span> change = outputOwnedBalance - inputOwnedBalance
+
+    <span class="hljs-keyword">const</span> direction = change &gt; <span class="hljs-number">0</span> ? <span class="hljs-string">'in'</span> : <span class="hljs-string">'out'</span>
+
+    <span class="hljs-keyword">const</span> amount = <span class="hljs-built_in">Math</span>.abs(change) <span class="hljs-comment">// <span class="hljs-doctag">TODO:</span> minus fee</span>
+
+    <span class="hljs-keyword">const</span> fee = inputBalance - outputBalance <span class="hljs-comment">// <span class="hljs-doctag">TODO:</span> detect if fee was paid by this wallet</span>
+
+    <span class="hljs-keyword">let</span> peer = <span class="hljs-string">'UNKNOWN'</span>
+
+    <span class="hljs-keyword">if</span> (direction === <span class="hljs-string">'in'</span>) {
+      <span class="hljs-keyword">if</span> (inputOwnedBalance === <span class="hljs-number">0</span> &amp;&amp; inputExternalAddresses.length === <span class="hljs-number">1</span>) {
+        peer = inputExternalAddresses[<span class="hljs-number">0</span>]
+      } <span class="hljs-keyword">else</span> <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> <span class="hljs-built_in">Error</span>(<span class="hljs-string">'Type of transaction not covered yet (owned inputs or multiple external input addresses)'</span>)
+    } <span class="hljs-keyword">else</span> {
+      <span class="hljs-keyword">if</span> (allInputOwned &amp;&amp; outputExternalAddresses.length === <span class="hljs-number">1</span>) {
+        peer = outputExternalAddresses[<span class="hljs-number">0</span>]
+      } <span class="hljs-keyword">else</span> <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> <span class="hljs-built_in">Error</span>(<span class="hljs-string">'Type of transaction not covered yet (external inputs or multiple output addresses)'</span>)
+    }
+
+    <span class="hljs-keyword">const</span> localTx = {
+      transaction,
+      amount,
+      direction,
+      fee,
+      height,
+      peer
+    }
+
+    <span class="hljs-built_in">console</span>.log(<span class="hljs-string">'\n\nRESULT\n'</span>, localTx)
+
+    <span class="hljs-keyword">this</span>._transactions[hash] = localTx
+
+    <span class="hljs-keyword">return</span> localTx
+  }</pre></div></div>
             
         </li>
         
@@ -966,21 +1094,9 @@ then retrieves and stores all transactions’ data</p>
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-51">&#182;</a>
               </div>
-              <p>TODO: process scripts somehow</p>
+              <hr>
 
             </div>
-            
-            <div class="content"><div class='highlight'><pre>
-    <span class="hljs-keyword">this</span>._transactions[hash] = {
-      hash,
-      hex,
-      transaction,
-      <span class="hljs-attr">amount</span>: <span class="hljs-string">'TODO'</span>,
-      <span class="hljs-attr">direction</span>: <span class="hljs-string">'TODO'</span>,
-      <span class="hljs-attr">peer</span>: <span class="hljs-string">'TODO'</span>,
-      <span class="hljs-attr">height</span>: <span class="hljs-string">'TODO'</span>
-    }
-  }</pre></div></div>
             
         </li>
         
@@ -990,19 +1106,6 @@ then retrieves and stores all transactions’ data</p>
               
               <div class="pilwrap ">
                 <a class="pilcrow" href="#section-52">&#182;</a>
-              </div>
-              <hr>
-
-            </div>
-            
-        </li>
-        
-        
-        <li id="section-53">
-            <div class="annotation">
-              
-              <div class="pilwrap ">
-                <a class="pilcrow" href="#section-53">&#182;</a>
               </div>
               <p>lifecycle</p>
 
@@ -1014,29 +1117,29 @@ then retrieves and stores all transactions’ data</p>
         </li>
         
         
-        <li id="section-54">
+        <li id="section-53">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-54">&#182;</a>
+                <a class="pilcrow" href="#section-53">&#182;</a>
               </div>
               <p>initialize secret</p>
 
             </div>
             
             <div class="content"><div class='highlight'><pre>    ;({
-      <span class="hljs-attr">BIP39</span>: <span class="hljs-function"><span class="hljs-params">()</span> =&gt;</span> <span class="hljs-keyword">this</span>._initializeBIP39Secret(),
-      <span class="hljs-attr">BIP32</span>: <span class="hljs-function"><span class="hljs-params">()</span> =&gt;</span> <span class="hljs-keyword">this</span>._initializeBIP32Secret()
+      <span class="hljs-attr">BIP39_BIP49</span>: <span class="hljs-function"><span class="hljs-params">()</span> =&gt;</span> <span class="hljs-keyword">this</span>._initializeBIP39BIP49Secret(),
+      <span class="hljs-attr">BIP49</span>: <span class="hljs-function"><span class="hljs-params">()</span> =&gt;</span> <span class="hljs-keyword">this</span>._initializeBIP49Secret()
     })[<span class="hljs-keyword">this</span>._type.secretType]()</pre></div></div>
             
         </li>
         
         
-        <li id="section-55">
+        <li id="section-54">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-55">&#182;</a>
+                <a class="pilcrow" href="#section-54">&#182;</a>
               </div>
               <p>connect to electrum</p>
 
@@ -1047,29 +1150,29 @@ then retrieves and stores all transactions’ data</p>
         </li>
         
         
-        <li id="section-56">
+        <li id="section-55">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-56">&#182;</a>
+                <a class="pilcrow" href="#section-55">&#182;</a>
               </div>
               <p>initialize wallet</p>
 
             </div>
             
             <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">await</span> ({
-      <span class="hljs-attr">BIP39</span>: <span class="hljs-function"><span class="hljs-params">()</span> =&gt;</span> <span class="hljs-keyword">this</span>._initializeBIP44Wallet(),
-      <span class="hljs-attr">BIP32</span>: <span class="hljs-function"><span class="hljs-params">()</span> =&gt;</span> <span class="hljs-keyword">this</span>._initializeBIP44Wallet()
+      <span class="hljs-attr">BIP39_BIP49</span>: <span class="hljs-function"><span class="hljs-params">()</span> =&gt;</span> <span class="hljs-keyword">this</span>._initializeBIP49Wallet(),
+      <span class="hljs-attr">BIP49</span>: <span class="hljs-function"><span class="hljs-params">()</span> =&gt;</span> <span class="hljs-keyword">this</span>._initializeBIP49Wallet()
     })[<span class="hljs-keyword">this</span>._type.secretType]()</pre></div></div>
             
         </li>
         
         
-        <li id="section-57">
+        <li id="section-56">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-57">&#182;</a>
+                <a class="pilcrow" href="#section-56">&#182;</a>
               </div>
               <p>update initialization-related state props</p>
 
@@ -1084,11 +1187,11 @@ then retrieves and stores all transactions’ data</p>
         </li>
         
         
-        <li id="section-58">
+        <li id="section-57">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-58">&#182;</a>
+                <a class="pilcrow" href="#section-57">&#182;</a>
               </div>
               <p>update all addresses</p>
 
@@ -1099,11 +1202,11 @@ then retrieves and stores all transactions’ data</p>
         </li>
         
         
-        <li id="section-59">
+        <li id="section-58">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-59">&#182;</a>
+                <a class="pilcrow" href="#section-58">&#182;</a>
               </div>
               <p>check gap and fill it if needed</p>
 
@@ -1114,11 +1217,11 @@ then retrieves and stores all transactions’ data</p>
         </li>
         
         
-        <li id="section-60">
+        <li id="section-59">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-60">&#182;</a>
+                <a class="pilcrow" href="#section-59">&#182;</a>
               </div>
               <p>update again if new addresses were added</p>
 
@@ -1130,11 +1233,11 @@ then retrieves and stores all transactions’ data</p>
         </li>
         
         
-        <li id="section-61">
+        <li id="section-60">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-61">&#182;</a>
+                <a class="pilcrow" href="#section-60">&#182;</a>
               </div>
               <hr>
 
@@ -1143,11 +1246,11 @@ then retrieves and stores all transactions’ data</p>
         </li>
         
         
-        <li id="section-62">
+        <li id="section-61">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-62">&#182;</a>
+                <a class="pilcrow" href="#section-61">&#182;</a>
               </div>
               <p>interface</p>
 
@@ -1257,11 +1360,11 @@ then retrieves and stores all transactions’ data</p>
         </li>
         
         
-        <li id="section-63">
+        <li id="section-62">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-63">&#182;</a>
+                <a class="pilcrow" href="#section-62">&#182;</a>
               </div>
               <p>TODO: user-friendly error messages instead of Joi’s? <a href="https://github.com/hapijs/joi/issues/546">https://github.com/hapijs/joi/issues/546</a></p>
 
