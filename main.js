@@ -1,19 +1,21 @@
 const WALLET_TYPES = require('./dictionaries/wallet-types')
 
 const createWallet = require('./lib/create-wallet')
-const Joi = require('./lib/joi')
-const Promise = require('bluebird')
-const Electrum = require('electrum-client')
 const EventEmitter = require('events')
+const Promise = require('bluebird')
+const Joi = require('./lib/joi')
+const Electrum = require('electrum-client')
 
 const bip39 = require('bip39')
 const bitcoin = require('bitcoinjs-lib')
 const sb = require('satoshi-bitcoin') // TODO: use bitcoinjs instead
 
-process.on('unhandledRejection', function (reason, promise) {
-  console.log(reason)
-  console.log(promise)
+// Promise debugging
+Promise.config({
+  longStackTraces: true,
+  monitoring: true
 })
+process.on('unhandledRejection', reason => console.error('\n\n> UNHANDLED PROMISE REJECTION\n\n', reason, '\n\n'))
 
 // ----------------
 // constants
