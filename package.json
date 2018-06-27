@@ -45,6 +45,7 @@
     "bitcoinjs-lib": "^3.3.2",
     "bluebird": "^3.5.1",
     "electrum-client": "gitlab:DaniGuardiola/node-electrum-client",
-    "joi": "^13.4.0"
+    "joi": "^13.4.0",
+    "satoshi-bitcoin": "^1.0.4"
   }
 }

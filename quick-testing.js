@@ -1,14 +1,23 @@
 const Wallet = require('./main')
 
-const recoveryPhrase = 'final portion lend shoulder law salon dose pool aerobic fire mountain wide defy chimney cash'
+const recoveryPhrase = 'attend ordinary entire myth leg utility flat jacket trade smart despair clerk'
 
 const run = async () => {
   const wallet = new Wallet('bitcoin_electrum_BIP39_BIP49', recoveryPhrase, { network: 'testnet' })
 
+  const prettyLog = x => console.log(`Direction: ${x.direction}, amount: ${x.amount}${
+    x.feePaidByWallet ? `, fee: ${x.fee}` : ''}, total: ${x.total}`)
+
+  wallet.alerts.on('transaction', prettyLog)
+  wallet.alerts.on('balance', console.log)
+  wallet.alerts.on('ready', () => console.log('ready!!!!!!!!!'))
+
   await wallet.onReady()
 
-  /*
+  console.log(await wallet.getBalance())
+  console.log(await wallet.getBalance({ unit: 'satoshis' }))
 
+  /*
   const {type, index} = wallet._getAddressLocationFromId('mq7CETgVeRkrh7GtSvMZVWbbo3ANBnk9mM')
   console.log(wallet._addresses[type][index])
   console.log(wallet._addresses.external.map(x => x.id))

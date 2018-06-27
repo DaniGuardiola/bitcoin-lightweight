@@ -4,18 +4,26 @@ const createWallet = require('./lib/create-wallet')
 const Joi = require('./lib/joi')
 const Promise = require('bluebird')
 const Electrum = require('electrum-client')
+const EventEmitter = require('events')
 
 const bip39 = require('bip39')
 const bitcoin = require('bitcoinjs-lib')
+const sb = require('satoshi-bitcoin') // TODO: use bitcoinjs instead
 
 // ----------------
 // constants
 
 const WALLET_TYPE_LIST = Object.keys(WALLET_TYPES)
 const DEFAULT_GAP_LIMIT = 20
-const CHANGE_GAP_LIMIT = 5
+const CHANGE_GAP_LIMIT = 6
 const ADDRESSES_UPDATE_CONCURRENCY = 1 // 20
 const TRANSACTION_RETRIEVAL_CONCURRENCY = 5
+
+// ----------------
+// helpers
+
+// TODO: change to generic function with all units support
+const satoshisToCoins = satoshis => sb.toBitcoin(satoshis)
 
 /**
  * Abstracts the logic of wallets, supporting multiple types for multiple currencies.
@@ -46,9 +54,20 @@ module.exports = class Wallet {
     // init electrum client
     this._electrum = new Electrum(53012, 'testnet.hsmiths.com', 'tls')
 
+    // init transaction objects
+    this._transactions = {}
+    this._rawTransactions = {}
+
+    // cache balance
+    this._balance = 0
+
+    // notification events
+    this.alerts = new EventEmitter()
+
     // initialization
     this._initialized = false
     this._initializationPromise = this._initialize()
+    this._initializationPromise.then(() => this.alerts.emit('ready'))
   }
 
   // ----------------
@@ -130,10 +149,6 @@ module.exports = class Wallet {
       change: new Array(CHANGE_GAP_LIMIT).fill().map((value, index) => this._deriveAddress('change', index))
     }
 
-    // initialize transaction objects
-    this._transactions = {}
-    this._rawTransactions = {}
-
     // subscribe to address updates
     this._electrum.subscribe.on('blockchain.scripthash.subscribe', async params => {
       await this._updateAddressHistoryById(params[0])
@@ -162,7 +177,7 @@ module.exports = class Wallet {
     const outputScript = bitcoin.script.scriptHash.output.encode(addressBytes)
 
     const id = bitcoin.address.fromOutputScript(outputScript, this._network)
-    const scriptHash = bitcoin.crypto.sha256(scriptSig)
+    const scriptHash = bitcoin.crypto.sha256(outputScript)
 
     // initial address object
     return {
@@ -255,7 +270,6 @@ module.exports = class Wallet {
   }
 
   async _updateAddressHistoryById (id, type) {
-    console.log('_updateAddressHistoryById')
     // updates the history of an address by id (updates local record)
 
     const addressLocation = this._getAddressLocationFromId(id, type)
@@ -268,7 +282,6 @@ module.exports = class Wallet {
   }
 
   async _fetchAddressHistory (addressId) {
-    console.log('_fetchAddressHistory')
     // retrieves history for an address (does not mutate local record)
     // then retrieves and stores all transactions' data
 
@@ -311,8 +324,6 @@ module.exports = class Wallet {
   async _retrieveRawTransaction (hash) {
     if (hash instanceof Buffer) hash = hash.toString('hex')
 
-    console.log('\n>> RAW TRANSACTION', hash)
-
     if (this._rawTransactions[hash]) return this._rawTransactions[hash]
 
     const hex = await this._electrum.blockchain.transaction.get(hash)
@@ -325,29 +336,13 @@ module.exports = class Wallet {
     return tx
   }
 
-  async _retrieveTransaction (hash, height) {
-    if (hash instanceof Buffer) hash = hash.toString('hex')
-
-    // TODO: handle height change (unconfirmed parents > confirmed parents in mempool > confirmed)
-    if (this._transactions[hash]) return this._transactions[hash]
-
-    const { transaction } = await this._retrieveRawTransaction(hash)
-
-    console.log('\n\n\n\n\n>> TRANSACTION', hash)
-
-    console.log(transaction)
-
-    const { ins, outs } = transaction
-
+  async _retrieveInputData (ins) {
     const inputAddresses = []
     const inputExternalAddresses = []
     let inputBalance = 0
     let inputOwnedBalance = 0
 
-    console.log('\n\n==== INS  ====')
-
     await Promise.map(ins, async input => {
-      console.log('\n> TYPE', bitcoin.script.classifyInput(input.script))
       const { transaction: originalTx } = await this._retrieveRawTransaction(input.hash.reverse())
       const originalOutput = originalTx.outs[input.index]
       const address = bitcoin.address.fromOutputScript(originalOutput.script, this._network)
@@ -356,77 +351,134 @@ module.exports = class Wallet {
       else inputExternalAddresses.push(address)
       inputBalance += originalOutput.value
       inputAddresses.push(address)
-      console.log(address)
-      console.log(addressInfo)
     })
-
-    console.log('\n\n\n\n')
-    console.log('INPUT BALANCE', inputBalance)
-    console.log('INPUT OWNED BALANCE', inputOwnedBalance)
-    console.log('INPUT EXTERNAL ADDRESSES', inputExternalAddresses)
 
     const allInputOwned = inputBalance === inputOwnedBalance
 
-    console.log('ALL INPUT OWNED', allInputOwned)
+    return {
+      inputAddresses,
+      inputExternalAddresses,
+      inputBalance,
+      inputOwnedBalance,
+      allInputOwned
+    }
+  }
 
-    console.log('\n\n==== OUTS ====')
-
+  async _retrieveOutputData (outs) {
     const outputAddresses = []
     const outputExternalAddresses = []
     let outputBalance = 0
     let outputOwnedBalance = 0
 
     outs.forEach(output => {
-      console.log('\n> TYPE', bitcoin.script.classifyOutput(output.script))
       const address = bitcoin.address.fromOutputScript(output.script, this._network)
       const addressInfo = this._getAddressLocationFromId(address)
       if (addressInfo) outputOwnedBalance += output.value
       else outputExternalAddresses.push(address)
       outputBalance += output.value
       outputAddresses.push(address)
-      console.log(address)
-      console.log(addressInfo)
     })
 
-    console.log('\n\n\n\n')
-    console.log('OUTPUT BALANCE', outputBalance)
-    console.log('OUTPUT OWNED BALANCE', outputOwnedBalance)
-    console.log('OUTPUT EXTERNAL ADDRESSES', outputExternalAddresses)
+    return {
+      outputAddresses,
+      outputExternalAddresses,
+      outputBalance,
+      outputOwnedBalance
+    }
+  }
+
+  _parseTransactionData (inputData, outputData) {
+    const {
+      // inputAddresses,
+      inputExternalAddresses,
+      inputBalance,
+      inputOwnedBalance,
+      allInputOwned
+    } = inputData
+
+    const {
+      // outputAddresses,
+      outputExternalAddresses,
+      outputBalance,
+      outputOwnedBalance
+    } = outputData
 
     const change = outputOwnedBalance - inputOwnedBalance
 
     const direction = change > 0 ? 'in' : 'out'
 
-    const amount = Math.abs(change) // TODO: minus fee
+    const feeSatoshis = inputBalance - outputBalance // TODO: detect if fee was paid by this wallet
+    const fee = satoshisToCoins(feeSatoshis)
+    let feePaidByWallet = false
 
-    const fee = inputBalance - outputBalance // TODO: detect if fee was paid by this wallet
+    const totalSatoshis = change
+    const total = satoshisToCoins(totalSatoshis)
+    let amountSatoshis = Math.abs(totalSatoshis)
 
-    let peer = 'UNKNOWN'
+    let peers = 'UNKNOWN'
 
     if (direction === 'in') {
-      if (inputOwnedBalance === 0 && inputExternalAddresses.length === 1) {
-        peer = inputExternalAddresses[0]
-      } else throw new Error('Type of transaction not covered yet (owned inputs or multiple external input addresses)')
-    } else {
-      if (allInputOwned && outputExternalAddresses.length === 1) {
-        peer = outputExternalAddresses[0]
-      } else throw new Error('Type of transaction not covered yet (external inputs or multiple output addresses)')
+      if (inputOwnedBalance === 0) {
+        peers = inputExternalAddresses
+      } else return Promise.reject(new Error('Type of transaction not covered yet (owned inputs on incoming transaction)'))
+    } else { // out
+      if (allInputOwned) {
+        peers = outputExternalAddresses
+        feePaidByWallet = true
+        amountSatoshis -= feeSatoshis
+      } else return Promise.reject(new Error('Type of transaction not covered yet (external inputs on outgoing transaction)'))
     }
 
-    const localTx = {
-      transaction,
-      amount,
+    const amount = satoshisToCoins(amountSatoshis)
+
+    return {
       direction,
+      peers,
+
+      total,
+      totalSatoshis,
+
+      amount,
+      amountSatoshis,
+
       fee,
-      height,
-      peer
+      feeSatoshis,
+      feePaidByWallet
+    }
+  }
+
+  async _retrieveTransaction (hash, height) {
+    if (hash instanceof Buffer) hash = hash.toString('hex')
+
+    // TODO: handle height change (unconfirmed parents > confirmed parents in mempool > confirmed)
+    if (this._transactions[hash]) return this._transactions[hash]
+
+    const { transaction } = await this._retrieveRawTransaction(hash)
+
+    const { ins, outs } = transaction
+
+    const inputData = await this._retrieveInputData(ins)
+    const outputData = await this._retrieveOutputData(outs)
+
+    const parsedTx = this._parseTransactionData(inputData, outputData)
+    const finalTx = Object.assign({ hash, height }, parsedTx)
+    this._transactions[hash] = finalTx
+
+    const previousBalance = this._balance
+    this._balance += finalTx.totalSatoshis
+    const balanceEvent = {
+      balance: this._balance,
+      change: finalTx.totalSatoshis,
+      previous: previousBalance,
+      transaction: finalTx.hash
     }
 
-    console.log('\n\nRESULT\n', localTx)
+    if (this._initialized) {
+      this.alerts.emit('transaction', Object.assign({}, finalTx))
+      this.alerts.emit('balance', balanceEvent)
+    }
 
-    this._transactions[hash] = localTx
-
-    return localTx
+    return finalTx
   }
 
   // ----------------
@@ -450,7 +502,6 @@ module.exports = class Wallet {
 
     // update initialization-related state props
     this._initialized = true
-    this._initializationPromise = false
   }
 
   async _update () {
@@ -503,32 +554,28 @@ module.exports = class Wallet {
    *
    * @async
    * @param  {object} options Options for the getBalance operation
-   * @param  {string} options.secondaryCurrency Overwrites the secondary currency setting
-   * @param  {string} options.withSymbol Returns strings with the currency symbol appended instead of just numbers for balances
+   * @param  {string} options.unit Unit of measure (`coins` | `satoshis`)
    *
-   * @return {Promise<{
-   *   balance: number,
-   *   secondary: {
-   *     balance: number,
-   *     currency: string
-   *   }
-   * }>} Object that contains the balance of the wallet currency and the secondary currency information
+   * @return {Promise<number>} Current balance of the wallet
    */
-  async getBalance (options = {}) {
+  getBalance (options = {}) {
+    // TODO: unit option validation
+    const unit = options.unit || 'coins'
+
     this._ensureInitialized()
     /*
-      Using electrum-client, either:
-      - retrieve balances for all addresses
-      - calculate balance from the history
-
-      The latter is probably the best option, to reduce bandwith and improve offline resilience.
-
-      The balance should be stored in the local database and then updated everytime new transactions
-      are pulled for the wallet's addresses.
-
-      Formatting options (like returning strings with an appended currency symbol with i18n instead of
-      just the numbers) should be included.
+      TODO
+      - move complete calc to another function to execute only once
+      - cache balance
+      - recalculate with every transaction
+      - send balance events
     */
+
+    // TODO: replace with genertic unit conversion function
+    if (unit === 'satoshis') return this._balance
+    if (unit === 'coins') return satoshisToCoins(this._balance)
+
+    throw new Error(`Unknown unit '${unit}'`)
   }
 
   async getTransactionHistory (options = {}) {
