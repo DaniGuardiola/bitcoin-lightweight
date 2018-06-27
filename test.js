@@ -9,6 +9,10 @@ const Wallet = require('./main')
 
 chai.should()
 
+const OPTIONS_DISABLE_NETWORK = {
+  __testsDisableNetwork: true
+}
+
 describe('Wallet', () => {
   const INCORRECT_TYPE = 'this_type_does_not_exist'
   const CORRECT_TYPE = 'bitcoin_electrum_BIP39_BIP49'
@@ -23,18 +27,18 @@ describe('Wallet', () => {
   })
 
   it('does not throw if correct wallet type and secret is passed (BIP39)', () => {
-    ;(() => new Wallet(CORRECT_TYPE, CORRECT_SECRET)).should.not.throw()
+    ;(() => new Wallet(CORRECT_TYPE, CORRECT_SECRET, OPTIONS_DISABLE_NETWORK)).should.not.throw()
   })
 
   it('defaults to bitcoin (livenet) network', () => {
-    const wallet = new Wallet(CORRECT_TYPE, CORRECT_SECRET)
+    const wallet = new Wallet(CORRECT_TYPE, CORRECT_SECRET, OPTIONS_DISABLE_NETWORK)
     wallet._network.messagePrefix.should.equal('\u0018Bitcoin Signed Message:\n')
     wallet._network.pubKeyHash.should.equal(0x00)
     wallet._networkName.should.equal('bitcoin')
   })
 
   it('switches to testnet network when used as option', () => {
-    const wallet = new Wallet(CORRECT_TYPE, CORRECT_SECRET, { network: 'testnet' })
+    const wallet = new Wallet(CORRECT_TYPE, CORRECT_SECRET, Object.assign({ network: 'testnet' }, OPTIONS_DISABLE_NETWORK))
     wallet._network.messagePrefix.should.equal('\u0018Bitcoin Signed Message:\n')
     wallet._network.pubKeyHash.should.equal(0x6f)
     wallet._networkName.should.equal('testnet')
@@ -46,7 +50,7 @@ describe('Wallet', () => {
       const CURRENCY = 'BTC'
       const SECRET_TYPE = 'BIP39_BIP49'
       it('creates a Wallet instance with the correct data', () => {
-        const wallet = Wallet.create(TYPE_ID)
+        const wallet = Wallet.create(TYPE_ID, OPTIONS_DISABLE_NETWORK)
         wallet._type.currency.should.equal(CURRENCY)
         wallet._type.secretType.should.equal(SECRET_TYPE)
       })
@@ -58,7 +62,7 @@ describe('Wallet', () => {
         const CURRENCY = 'BTC'
         const SECRET_TYPE = 'BIP49'
 
-        const wallet = Wallet.create(TYPE_ID)
+        const wallet = Wallet.create(TYPE_ID, OPTIONS_DISABLE_NETWORK)
         wallet._type.currency.should.equal(CURRENCY)
         wallet._type.secretType.should.equal(SECRET_TYPE)
       })
@@ -68,7 +72,7 @@ describe('Wallet', () => {
   describe('Bitcoin electrum BIP39_BIP49 type', () => {
     const TYPE_ID = 'bitcoin_electrum_BIP39_BIP49'
     const INCORRECT_SECRET_MNEMONIC = 'i am not a correct secret seed'
-    const CORRECT_SECRET_MNEMONIC2 = bip39.generateMnemonic()
+    // const CORRECT_SECRET_MNEMONIC2 = bip39.generateMnemonic()
     const CORRECT_SECRET_MNEMONIC = 'attend ordinary entire myth leg utility flat jacket trade smart despair clerk'
     const seed = bip39.mnemonicToSeed(CORRECT_SECRET_MNEMONIC)
     const DERIVED_HD_NODE = bitcoin.HDNode.fromSeedBuffer(seed)
@@ -85,11 +89,11 @@ describe('Wallet', () => {
     })
 
     it('does not throw if secret seed is correct', () => {
-      ;(() => new Wallet(TYPE_ID, CORRECT_SECRET_MNEMONIC)).should.not.throw()
+      ;(() => new Wallet(TYPE_ID, CORRECT_SECRET_MNEMONIC, OPTIONS_DISABLE_NETWORK)).should.not.throw()
     })
 
     it('derives the correct HD private key from mnemonic', async () => {
-      const wallet = new Wallet(TYPE_ID, CORRECT_SECRET_MNEMONIC)
+      const wallet = new Wallet(TYPE_ID, CORRECT_SECRET_MNEMONIC, OPTIONS_DISABLE_NETWORK)
       await wallet.onReady()
       wallet._rootHDNode.constructor.name.should.equal('HDNode')
       wallet._rootHDNode.toString().should.equal(DERIVED_HD_NODE.toString())
@@ -99,7 +103,7 @@ describe('Wallet', () => {
       const wallet = new Wallet(TYPE_ID, {
         seed: CORRECT_SECRET_MNEMONIC,
         passphrase: PASSPHRASE
-      })
+      }, OPTIONS_DISABLE_NETWORK)
       await wallet.onReady()
       wallet._rootHDNode.constructor.name.should.equal('HDNode')
       wallet._rootHDNode.toString().should.equal(DERIVED_HD_NODE_WITH_PASSPHRASE.toString())
@@ -123,14 +127,15 @@ describe('Wallet', () => {
     })
 
     it('does not throw if secret seed is correct', () => {
-      ;(() => new Wallet(TYPE_ID, CORRECT_SECRET_KEY)).should.not.throw()
+      ;(() => new Wallet(TYPE_ID, CORRECT_SECRET_KEY, OPTIONS_DISABLE_NETWORK)).should.not.throw()
     })
 
     it('stores the correct HD private key', async () => {
-      const wallet = new Wallet(TYPE_ID, CORRECT_SECRET_KEY)
+      const wallet = new Wallet(TYPE_ID, CORRECT_SECRET_KEY, OPTIONS_DISABLE_NETWORK)
       await wallet.onReady()
       wallet._rootHDNode.constructor.name.should.equal('HDNode')
-      wallet._rootHDNode.toString().should.equal(CORRECT_SECRET_KEY)
+
+      wallet._rootHDNode.toBase58().should.equal(CORRECT_SECRET_KEY)
     })
   })
 })

@@ -51,15 +51,20 @@ module.exports = class Wallet {
     // validate and store options
     options = Joi.attempt(options, Joi.object({
       network: Joi.string().valid(['bitcoin', 'testnet']).default('bitcoin'),
-      gapLimit: Joi.number().integer().positive().max(100).default(DEFAULT_GAP_LIMIT)
+      gapLimit: Joi.number().integer().positive().max(100).default(DEFAULT_GAP_LIMIT),
+      __testsDisableNetwork: Joi.bool()
     }))
+
+    // testing options
+    this.__tests = {}
+    this._saveTestsOptions(options)
 
     this._networkName = options.network
     this._network = bitcoin.networks[options.network]
     this._gapLimit = options.gapLimit
 
     // init electrum client
-    this._electrum = new Electrum(53012, 'testnet.hsmiths.com', 'tls')
+    if (!this.__tests.disableNetwork) this._electrum = new Electrum(53012, 'testnet.hsmiths.com', 'tls')
 
     // init transaction objects
     this._transactions = {}
@@ -77,6 +82,10 @@ module.exports = class Wallet {
     this._initializationPromise.then(() => this.alerts.emit('ready'))
   }
 
+  _saveTestsOptions (options) {
+    this.__tests.disableNetwork = options.__testsDisableNetwork || false
+  }
+
   // ----------------
   // wallet creation
 
@@ -88,8 +97,8 @@ module.exports = class Wallet {
    * @return {Wallet}         Wallet instance
    */
   static create (type, options = {}) {
-    const { secret } = createWallet[type](options)
-    return new Wallet(type, secret)
+    const { secret, options: opts } = createWallet[type](options)
+    return new Wallet(type, secret, opts)
   }
 
   // ----------------
@@ -155,15 +164,18 @@ module.exports = class Wallet {
 
     // generate the initial external and change addresses
     this._addresses = {
-      external: new Array(this._gapLimit).fill().map((value, index) => this._deriveAddress('external', index)),
-      change: new Array(CHANGE_GAP_LIMIT).fill().map((value, index) => this._deriveAddress('change', index))
+      // TODO: DRY this function
+      external: new Array(this._gapLimit).fill().map((value, index) => Wallet._deriveBIP49Address(this._deriveHDNode('external', index), 'external')),
+      change: new Array(CHANGE_GAP_LIMIT).fill().map((value, index) => Wallet._deriveBIP49Address(this._deriveHDNode('change', index), 'change'))
     }
 
-    // subscribe to address updates
-    this._electrum.subscribe.on('blockchain.scripthash.subscribe', async params => {
-      await this._updateAddressHistoryById(params[0])
-      return this._update()
-    })
+    // subscribe to address updates (if network is not disabled)
+    if (!this.__tests.disableNetwork) {
+      this._electrum.subscribe.on('blockchain.scripthash.subscribe', async params => {
+        await this._updateAddressHistoryById(params[0])
+        return this._update()
+      })
+    }
 
     // run the initial update
     return this._update()
@@ -176,11 +188,8 @@ module.exports = class Wallet {
   // ----------------
   // addresses
 
-  _deriveAddress (type, index) {
-    // derives an address from the relevant HD key for a given index
-
-    const hdNode = this._deriveHDNode(type, index)
-
+  static _deriveBIP49Address (hdNode, type) {
+    // derives a P2SH(P2WPKH) address from the relevant HD key for a given index
     const keyhash = bitcoin.crypto.hash160(hdNode.getPublicKeyBuffer())
     const scriptSig = bitcoin.script.witnessPubKeyHash.output.encode(keyhash)
     const addressBytes = bitcoin.crypto.hash160(scriptSig)
@@ -191,9 +200,9 @@ module.exports = class Wallet {
 
     // initial address object
     return {
+      type,
       id,
       scriptHash,
-      type,
       subscribed: false,
       status: null,
       history: [],
@@ -201,11 +210,32 @@ module.exports = class Wallet {
     }
   }
 
+  async _updateAddresses (type, subscribe, fetchAddressHistory) {
+    // update all types of addresses if type is not specified
+    if (!type || type === 'all') return Promise.mapSeries(['external', 'change'], newType => this._updateAddresses(newType, subscribe, fetchAddressHistory))
+
+    // take care of not subscribed / outdated addresses
+    this._addresses[type] = await Promise.map(this._addresses[type], async address => {
+      const scriptHashBuffer = Buffer.alloc(address.scriptHash.length)
+      address.scriptHash.copy(scriptHashBuffer)
+      const scriptHash = scriptHashBuffer.reverse().toString('hex')
+      let status
+      if (!address.subscribed) {
+        status = await subscribe(scriptHash)
+        address.subscribed = true
+      } else return address // if already subscribed, no need to pull history
+
+      if (address.status !== status) Object.assign(address, await fetchAddressHistory(scriptHash))
+
+      return address
+    }, { concurrency: ADDRESSES_UPDATE_CONCURRENCY })
+  }
+
   _addAddresses (type, amount) {
     // creates and appends as many addresses as specified
     const length = this._addresses[type].length
     const newAddresses = new Array(amount).fill().map((value, index) =>
-      this._deriveAddress(type, index + length))
+      Wallet._deriveBIP49Address(this._deriveHDNode(type, index + length), type))
     this._addresses[type] = this._addresses[type].concat(newAddresses)
   }
 
@@ -305,27 +335,6 @@ module.exports = class Wallet {
       { concurrency: TRANSACTION_RETRIEVAL_CONCURRENCY })
 
     return { history, status }
-  }
-
-  async _updateAddresses (type) {
-    // update all types of addresses if type is not specified
-    if (!type) return Promise.mapSeries(['external', 'change'], type => this._updateAddresses(type))
-
-    // take care of not subscribed / outdated addresses
-    this._addresses[type] = await Promise.map(this._addresses[type], async address => {
-      const scriptHashBuffer = Buffer.alloc(address.scriptHash.length)
-      address.scriptHash.copy(scriptHashBuffer)
-      const scriptHash = scriptHashBuffer.reverse().toString('hex')
-      let status
-      if (!address.subscribed) {
-        status = await this._electrum.blockchain.scripthash.subscribe(scriptHash)
-        address.subscribed = true
-      } else return address // if already subscribed, no need to pull history
-
-      if (address.status !== status) Object.assign(address, await this._fetchAddressHistory(scriptHash))
-
-      return address
-    }, { concurrency: ADDRESSES_UPDATE_CONCURRENCY })
   }
 
   // ----------------
@@ -518,7 +527,7 @@ module.exports = class Wallet {
     })[this._type.secretType]()
 
     // connect to electrum
-    await this._electrum.connect()
+    if (!this.__tests.disableNetwork) await this._electrum.connect()
 
     // initialize wallet
     await ({
@@ -531,8 +540,20 @@ module.exports = class Wallet {
   }
 
   async _update () {
+    let subscribe
+    let fetchAddressHistory
+
+    // disable network for testing option
+    if (this.__tests.disableNetwork) {
+      subscribe = () => null
+      fetchAddressHistory = () => ({ history: [], status: null })
+    } else {
+      subscribe = scriptHash => this._electrum.blockchain.scripthash.subscribe(scriptHash)
+      fetchAddressHistory = scriptHash => this._fetchAddressHistory(scriptHash)
+    }
+
     // update all addresses
-    await this._updateAddresses()
+    await this._updateAddresses('all', subscribe, fetchAddressHistory)
 
     // check gap and fill it if needed
     const newAddresses = await this._fixAddressGap()
