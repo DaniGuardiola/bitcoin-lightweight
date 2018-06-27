@@ -68,7 +68,9 @@ describe('Wallet', () => {
   describe('Bitcoin electrum BIP39_BIP49 type', () => {
     const TYPE_ID = 'bitcoin_electrum_BIP39_BIP49'
     const INCORRECT_SECRET_MNEMONIC = 'i am not a correct secret seed'
-    const CORRECT_SECRET_MNEMONIC = bip39.generateMnemonic()
+    const CORRECT_SECRET_MNEMONIC2 = bip39.generateMnemonic()
+    console.log(CORRECT_SECRET_MNEMONIC2)
+    const CORRECT_SECRET_MNEMONIC = 'attend ordinary entire myth leg utility flat jacket trade smart despair clerk'
     const seed = bip39.mnemonicToSeed(CORRECT_SECRET_MNEMONIC)
     const DERIVED_HD_NODE = bitcoin.HDNode.fromSeedBuffer(seed)
     const PASSPHRASE = 'this is a passphrase'

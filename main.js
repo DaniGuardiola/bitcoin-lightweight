@@ -10,6 +10,11 @@ const bip39 = require('bip39')
 const bitcoin = require('bitcoinjs-lib')
 const sb = require('satoshi-bitcoin') // TODO: use bitcoinjs instead
 
+process.on('unhandledRejection', function (reason, promise) {
+  console.log(reason)
+  console.log(promise)
+})
+
 // ----------------
 // constants
 
@@ -81,7 +86,7 @@ module.exports = class Wallet {
    * @return {Wallet}         Wallet instance
    */
   static create (type, options = {}) {
-    const {secret} = createWallet[type](options)
+    const { secret } = createWallet[type](options)
     return new Wallet(type, secret)
   }
 
@@ -93,6 +98,14 @@ module.exports = class Wallet {
 
     // if not initialized, throw an error
     if (!this._initialized) throw new Error('Wallet is not initialized yet')
+  }
+
+  async _onInitialized () {
+    // can be used in async functions by adding: await this._onInitialized()
+    // statements after it will be run only if/once wallet is initialized
+
+    // if not initialized, wait for initialization to be over
+    if (!this._initialized) return this._initializationPromise
   }
 
   _initializeBIP39BIP49Secret () {
@@ -117,19 +130,14 @@ module.exports = class Wallet {
     this._rootHDNode = bitcoin.HDNode.fromSeedBuffer(mnemonic, this._network)
   }
 
+  // ----------------
+  // hd wallet
+
   _initializeBIP49Secret () {
     // github.com/bitcoin/bips/blob/master/bip-0032.mediawiki
 
     // store HD private key
     this._rootHDNode = bitcoin.HDNode.fromBase58(this._secret, this._network)
-  }
-
-  async _onInitialized () {
-    // can be used in async functions by adding: await this._onInitialized()
-    // statements after it will be run only if/once wallet is initialized
-
-    // if not initialized, wait for initialization to be over
-    if (!this._initialized) return this._initializationPromise
   }
 
   async _initializeBIP49Wallet () {
@@ -321,73 +329,7 @@ module.exports = class Wallet {
   // ----------------
   // transaction
 
-  async _retrieveRawTransaction (hash) {
-    if (hash instanceof Buffer) hash = hash.toString('hex')
-
-    if (this._rawTransactions[hash]) return this._rawTransactions[hash]
-
-    const hex = await this._electrum.blockchain.transaction.get(hash)
-    const tx = {
-      hex,
-      transaction: bitcoin.Transaction.fromHex(hex)
-    }
-
-    this._rawTransactions[hash] = tx
-    return tx
-  }
-
-  async _retrieveInputData (ins) {
-    const inputAddresses = []
-    const inputExternalAddresses = []
-    let inputBalance = 0
-    let inputOwnedBalance = 0
-
-    await Promise.map(ins, async input => {
-      const { transaction: originalTx } = await this._retrieveRawTransaction(input.hash.reverse())
-      const originalOutput = originalTx.outs[input.index]
-      const address = bitcoin.address.fromOutputScript(originalOutput.script, this._network)
-      const addressInfo = this._getAddressLocationFromId(address)
-      if (addressInfo) inputOwnedBalance += originalOutput.value
-      else inputExternalAddresses.push(address)
-      inputBalance += originalOutput.value
-      inputAddresses.push(address)
-    })
-
-    const allInputOwned = inputBalance === inputOwnedBalance
-
-    return {
-      inputAddresses,
-      inputExternalAddresses,
-      inputBalance,
-      inputOwnedBalance,
-      allInputOwned
-    }
-  }
-
-  async _retrieveOutputData (outs) {
-    const outputAddresses = []
-    const outputExternalAddresses = []
-    let outputBalance = 0
-    let outputOwnedBalance = 0
-
-    outs.forEach(output => {
-      const address = bitcoin.address.fromOutputScript(output.script, this._network)
-      const addressInfo = this._getAddressLocationFromId(address)
-      if (addressInfo) outputOwnedBalance += output.value
-      else outputExternalAddresses.push(address)
-      outputBalance += output.value
-      outputAddresses.push(address)
-    })
-
-    return {
-      outputAddresses,
-      outputExternalAddresses,
-      outputBalance,
-      outputOwnedBalance
-    }
-  }
-
-  _parseTransactionData (inputData, outputData) {
+  static _parseTransactionIO (inputData, outputData) {
     const {
       // inputAddresses,
       inputExternalAddresses,
@@ -420,13 +362,13 @@ module.exports = class Wallet {
     if (direction === 'in') {
       if (inputOwnedBalance === 0) {
         peers = inputExternalAddresses
-      } else return Promise.reject(new Error('Type of transaction not covered yet (owned inputs on incoming transaction)'))
+      } else throw new Error('Type of transaction not covered yet (owned inputs on incoming transaction)')
     } else { // out
       if (allInputOwned) {
         peers = outputExternalAddresses
         feePaidByWallet = true
         amountSatoshis -= feeSatoshis
-      } else return Promise.reject(new Error('Type of transaction not covered yet (external inputs on outgoing transaction)'))
+      } else throw new Error('Type of transaction not covered yet (external inputs on outgoing transaction)')
     }
 
     const amount = satoshisToCoins(amountSatoshis)
@@ -447,6 +389,83 @@ module.exports = class Wallet {
     }
   }
 
+  static _parseOutputs (outputs, network, getAddressInfo) {
+    const outputAddresses = []
+    const outputExternalAddresses = []
+    let outputBalance = 0
+    let outputOwnedBalance = 0
+
+    outputs.forEach(output => {
+      const address = bitcoin.address.fromOutputScript(output.script, network)
+      const addressInfo = getAddressInfo(address)
+      if (addressInfo) outputOwnedBalance += output.value
+      else outputExternalAddresses.push(address)
+      outputBalance += output.value
+      outputAddresses.push(address)
+    })
+
+    return {
+      outputAddresses,
+      outputExternalAddresses,
+      outputBalance,
+      outputOwnedBalance
+    }
+  }
+
+  static _parseRawTransaction (hex) {
+    return {
+      hex,
+      transaction: bitcoin.Transaction.fromHex(hex)
+    }
+  }
+
+  static async _retrieveAndParseInputs (inputs, network, retrieveRawTransaction, getAddressInfo) {
+    const inputAddresses = []
+    const inputExternalAddresses = []
+    let inputBalance = 0
+    let inputOwnedBalance = 0
+
+    await Promise.map(inputs, async input => {
+      const { transaction } = await retrieveRawTransaction(input.hash.reverse())
+      const originalOutput = transaction.outs[input.index]
+
+      const address = bitcoin.address.fromOutputScript(originalOutput.script, network)
+      const addressInfo = getAddressInfo(address)
+      if (addressInfo) inputOwnedBalance += originalOutput.value
+      else inputExternalAddresses.push(address)
+      inputBalance += originalOutput.value
+      inputAddresses.push(address)
+    })
+
+    const allInputOwned = inputBalance === inputOwnedBalance
+
+    return {
+      inputAddresses,
+      inputExternalAddresses,
+      inputBalance,
+      inputOwnedBalance,
+      allInputOwned
+    }
+  }
+
+  async _retrieveRawTransaction (hash) {
+    if (hash instanceof Buffer) hash = hash.toString('hex')
+
+    // use cache
+    if (this._rawTransactions[hash]) return this._rawTransactions[hash]
+
+    // retrieve
+    const hex = await this._electrum.blockchain.transaction.get(hash)
+
+    // parse
+    const tx = Wallet._parseRawTransaction(hex)
+
+    // write cache
+    this._rawTransactions[hash] = tx
+
+    return tx
+  }
+
   async _retrieveTransaction (hash, height) {
     if (hash instanceof Buffer) hash = hash.toString('hex')
 
@@ -457,10 +476,15 @@ module.exports = class Wallet {
 
     const { ins, outs } = transaction
 
-    const inputData = await this._retrieveInputData(ins)
-    const outputData = await this._retrieveOutputData(outs)
+    const inputData = await Wallet._retrieveAndParseInputs(ins,
+      this._network,
+      hash => this._retrieveRawTransaction(hash),
+      address => this._getAddressLocationFromId(address))
+    const outputData = await Wallet._parseOutputs(outs,
+      this._network,
+      address => this._getAddressLocationFromId(address))
 
-    const parsedTx = this._parseTransactionData(inputData, outputData)
+    const parsedTx = Wallet._parseTransactionIO(inputData, outputData)
     const finalTx = Object.assign({ hash, height }, parsedTx)
     this._transactions[hash] = finalTx
 
