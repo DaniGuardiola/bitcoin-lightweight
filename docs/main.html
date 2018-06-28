@@ -647,8 +647,10 @@ false =&gt; object (seed + optional passphrase) format</p>
 
             </div>
             
-            <div class="content"><div class='highlight'><pre>      external: <span class="hljs-keyword">new</span> <span class="hljs-built_in">Array</span>(<span class="hljs-keyword">this</span>._gapLimit).fill().map(<span class="hljs-function">(<span class="hljs-params">value, index</span>) =&gt;</span> Wallet._deriveBIP49Address(<span class="hljs-keyword">this</span>._deriveHDNode(<span class="hljs-string">'external'</span>, index), <span class="hljs-string">'external'</span>)),
-      <span class="hljs-attr">change</span>: <span class="hljs-keyword">new</span> <span class="hljs-built_in">Array</span>(CHANGE_GAP_LIMIT).fill().map(<span class="hljs-function">(<span class="hljs-params">value, index</span>) =&gt;</span> Wallet._deriveBIP49Address(<span class="hljs-keyword">this</span>._deriveHDNode(<span class="hljs-string">'change'</span>, index), <span class="hljs-string">'change'</span>))
+            <div class="content"><div class='highlight'><pre>      external: <span class="hljs-keyword">new</span> <span class="hljs-built_in">Array</span>(<span class="hljs-keyword">this</span>._gapLimit).fill().map(<span class="hljs-function">(<span class="hljs-params">value, index</span>) =&gt;</span>
+        Wallet._deriveBIP49Address(<span class="hljs-keyword">this</span>._deriveHDNode(<span class="hljs-string">'external'</span>, index), <span class="hljs-string">'external'</span>, <span class="hljs-keyword">this</span>._network)),
+      <span class="hljs-attr">change</span>: <span class="hljs-keyword">new</span> <span class="hljs-built_in">Array</span>(CHANGE_GAP_LIMIT).fill().map(<span class="hljs-function">(<span class="hljs-params">value, index</span>) =&gt;</span>
+        Wallet._deriveBIP49Address(<span class="hljs-keyword">this</span>._deriveHDNode(<span class="hljs-string">'change'</span>, index), <span class="hljs-string">'change'</span>, <span class="hljs-keyword">this</span>._network))
     }</pre></div></div>
             
         </li>
@@ -718,7 +720,7 @@ false =&gt; object (seed + optional passphrase) format</p>
             </div>
             
             <div class="content"><div class='highlight'><pre>
-  <span class="hljs-keyword">static</span> _deriveBIP49Address (hdNode, type) {</pre></div></div>
+  <span class="hljs-keyword">static</span> _deriveBIP49Address (hdNode, type, network) {</pre></div></div>
             
         </li>
         
@@ -738,7 +740,7 @@ false =&gt; object (seed + optional passphrase) format</p>
     <span class="hljs-keyword">const</span> addressBytes = bitcoin.crypto.hash160(scriptSig)
     <span class="hljs-keyword">const</span> outputScript = bitcoin.script.scriptHash.output.encode(addressBytes)
 
-    <span class="hljs-keyword">const</span> id = bitcoin.address.fromOutputScript(outputScript, <span class="hljs-keyword">this</span>._network)
+    <span class="hljs-keyword">const</span> id = bitcoin.address.fromOutputScript(outputScript, network)
     <span class="hljs-keyword">const</span> scriptHash = bitcoin.crypto.sha256(outputScript)</pre></div></div>
             
         </li>
@@ -828,7 +830,7 @@ false =&gt; object (seed + optional passphrase) format</p>
             
             <div class="content"><div class='highlight'><pre>    <span class="hljs-keyword">const</span> length = <span class="hljs-keyword">this</span>._addresses[type].length
     <span class="hljs-keyword">const</span> newAddresses = <span class="hljs-keyword">new</span> <span class="hljs-built_in">Array</span>(amount).fill().map(<span class="hljs-function">(<span class="hljs-params">value, index</span>) =&gt;</span>
-      Wallet._deriveBIP49Address(<span class="hljs-keyword">this</span>._deriveHDNode(type, index + length), type))
+      Wallet._deriveBIP49Address(<span class="hljs-keyword">this</span>._deriveHDNode(type, index + length), type, <span class="hljs-keyword">this</span>._network))
     <span class="hljs-keyword">this</span>._addresses[type] = <span class="hljs-keyword">this</span>._addresses[type].concat(newAddresses)
   }
 
@@ -1163,14 +1165,42 @@ then retrieves and stores all transactions’ data</p>
     <span class="hljs-keyword">if</span> (direction === <span class="hljs-string">'in'</span>) {
       <span class="hljs-keyword">if</span> (inputOwnedBalance === <span class="hljs-number">0</span>) {
         peers = inputExternalAddresses
-      } <span class="hljs-keyword">else</span> <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> <span class="hljs-built_in">Error</span>(<span class="hljs-string">'Type of transaction not covered yet (owned inputs on incoming transaction)'</span>)
-    } <span class="hljs-keyword">else</span> { <span class="hljs-comment">// out</span>
+      } <span class="hljs-keyword">else</span> peers = <span class="hljs-string">'Not supported'</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-62">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-62">&#182;</a>
+              </div>
+              <p>throw new Error(<code>Type of transaction not covered yet (owned inputs on incoming transaction)\nTX: ${hash}</code>)</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    } <span class="hljs-keyword">else</span> { <span class="hljs-comment">// out</span>
       <span class="hljs-keyword">if</span> (allInputOwned) {
         peers = outputExternalAddresses
         feePaidByWallet = <span class="hljs-literal">true</span>
         amountSatoshis -= feeSatoshis
-      } <span class="hljs-keyword">else</span> <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> <span class="hljs-built_in">Error</span>(<span class="hljs-string">'Type of transaction not covered yet (external inputs on outgoing transaction)'</span>)
-    }
+      } <span class="hljs-keyword">else</span> peers = <span class="hljs-string">'Not supported'</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-63">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-63">&#182;</a>
+              </div>
+              <p>throw new Error(<code>Type of transaction not covered yet (external inputs on outgoing transaction)\nTX: ${hash}</code>)</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    }
 
     <span class="hljs-keyword">const</span> amount = satoshisToCoins(amountSatoshis)
 
@@ -1255,11 +1285,11 @@ then retrieves and stores all transactions’ data</p>
         </li>
         
         
-        <li id="section-62">
+        <li id="section-64">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-62">&#182;</a>
+                <a class="pilcrow" href="#section-64">&#182;</a>
               </div>
               <p>use cache</p>
 
@@ -1270,11 +1300,11 @@ then retrieves and stores all transactions’ data</p>
         </li>
         
         
-        <li id="section-63">
+        <li id="section-65">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-63">&#182;</a>
+                <a class="pilcrow" href="#section-65">&#182;</a>
               </div>
               <p>retrieve</p>
 
@@ -1285,11 +1315,11 @@ then retrieves and stores all transactions’ data</p>
         </li>
         
         
-        <li id="section-64">
+        <li id="section-66">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-64">&#182;</a>
+                <a class="pilcrow" href="#section-66">&#182;</a>
               </div>
               <p>parse</p>
 
@@ -1300,11 +1330,11 @@ then retrieves and stores all transactions’ data</p>
         </li>
         
         
-        <li id="section-65">
+        <li id="section-67">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-65">&#182;</a>
+                <a class="pilcrow" href="#section-67">&#182;</a>
               </div>
               <p>write cache</p>
 
@@ -1321,11 +1351,11 @@ then retrieves and stores all transactions’ data</p>
         </li>
         
         
-        <li id="section-66">
+        <li id="section-68">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-66">&#182;</a>
+                <a class="pilcrow" href="#section-68">&#182;</a>
               </div>
               <p>TODO: handle height change (unconfirmed parents &gt; confirmed parents in mempool &gt; confirmed)</p>
 
@@ -1369,11 +1399,11 @@ then retrieves and stores all transactions’ data</p>
         </li>
         
         
-        <li id="section-67">
+        <li id="section-69">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-67">&#182;</a>
+                <a class="pilcrow" href="#section-69">&#182;</a>
               </div>
               <hr>
 
@@ -1382,11 +1412,11 @@ then retrieves and stores all transactions’ data</p>
         </li>
         
         
-        <li id="section-68">
+        <li id="section-70">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-68">&#182;</a>
+                <a class="pilcrow" href="#section-70">&#182;</a>
               </div>
               <p>lifecycle</p>
 
@@ -1398,11 +1428,11 @@ then retrieves and stores all transactions’ data</p>
         </li>
         
         
-        <li id="section-69">
+        <li id="section-71">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-69">&#182;</a>
+                <a class="pilcrow" href="#section-71">&#182;</a>
               </div>
               <p>initialize secret</p>
 
@@ -1416,11 +1446,11 @@ then retrieves and stores all transactions’ data</p>
         </li>
         
         
-        <li id="section-70">
+        <li id="section-72">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-70">&#182;</a>
+                <a class="pilcrow" href="#section-72">&#182;</a>
               </div>
               <p>connect to electrum</p>
 
@@ -1431,11 +1461,11 @@ then retrieves and stores all transactions’ data</p>
         </li>
         
         
-        <li id="section-71">
+        <li id="section-73">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-71">&#182;</a>
+                <a class="pilcrow" href="#section-73">&#182;</a>
               </div>
               <p>initialize wallet</p>
 
@@ -1449,11 +1479,11 @@ then retrieves and stores all transactions’ data</p>
         </li>
         
         
-        <li id="section-72">
+        <li id="section-74">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-72">&#182;</a>
+                <a class="pilcrow" href="#section-74">&#182;</a>
               </div>
               <p>update initialization-related state props</p>
 
@@ -1469,11 +1499,11 @@ then retrieves and stores all transactions’ data</p>
         </li>
         
         
-        <li id="section-73">
+        <li id="section-75">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-73">&#182;</a>
+                <a class="pilcrow" href="#section-75">&#182;</a>
               </div>
               <p>disable network for testing option</p>
 
@@ -1490,11 +1520,11 @@ then retrieves and stores all transactions’ data</p>
         </li>
         
         
-        <li id="section-74">
+        <li id="section-76">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-74">&#182;</a>
+                <a class="pilcrow" href="#section-76">&#182;</a>
               </div>
               <p>update all addresses</p>
 
@@ -1505,11 +1535,11 @@ then retrieves and stores all transactions’ data</p>
         </li>
         
         
-        <li id="section-75">
+        <li id="section-77">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-75">&#182;</a>
+                <a class="pilcrow" href="#section-77">&#182;</a>
               </div>
               <p>check gap and fill it if needed</p>
 
@@ -1520,11 +1550,11 @@ then retrieves and stores all transactions’ data</p>
         </li>
         
         
-        <li id="section-76">
+        <li id="section-78">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-76">&#182;</a>
+                <a class="pilcrow" href="#section-78">&#182;</a>
               </div>
               <p>update again if new addresses were added</p>
 
@@ -1536,11 +1566,11 @@ then retrieves and stores all transactions’ data</p>
         </li>
         
         
-        <li id="section-77">
+        <li id="section-79">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-77">&#182;</a>
+                <a class="pilcrow" href="#section-79">&#182;</a>
               </div>
               <hr>
 
@@ -1549,11 +1579,11 @@ then retrieves and stores all transactions’ data</p>
         </li>
         
         
-        <li id="section-78">
+        <li id="section-80">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-78">&#182;</a>
+                <a class="pilcrow" href="#section-80">&#182;</a>
               </div>
               <p>interface</p>
 
@@ -1605,11 +1635,11 @@ then retrieves and stores all transactions’ data</p>
         </li>
         
         
-        <li id="section-79">
+        <li id="section-81">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-79">&#182;</a>
+                <a class="pilcrow" href="#section-81">&#182;</a>
               </div>
               <p>TODO: unit option validation</p>
 
@@ -1629,11 +1659,11 @@ then retrieves and stores all transactions’ data</p>
         </li>
         
         
-        <li id="section-80">
+        <li id="section-82">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-80">&#182;</a>
+                <a class="pilcrow" href="#section-82">&#182;</a>
               </div>
               <p>TODO: replace with genertic unit conversion function</p>
 
@@ -1684,11 +1714,11 @@ then retrieves and stores all transactions’ data</p>
         </li>
         
         
-        <li id="section-81">
+        <li id="section-83">
             <div class="annotation">
               
               <div class="pilwrap ">
-                <a class="pilcrow" href="#section-81">&#182;</a>
+                <a class="pilcrow" href="#section-83">&#182;</a>
               </div>
               <p>TODO: user-friendly error messages instead of Joi’s? <a href="https://github.com/hapijs/joi/issues/546">https://github.com/hapijs/joi/issues/546</a></p>
 

@@ -165,8 +165,10 @@ module.exports = class Wallet {
     // generate the initial external and change addresses
     this._addresses = {
       // TODO: DRY this function
-      external: new Array(this._gapLimit).fill().map((value, index) => Wallet._deriveBIP49Address(this._deriveHDNode('external', index), 'external')),
-      change: new Array(CHANGE_GAP_LIMIT).fill().map((value, index) => Wallet._deriveBIP49Address(this._deriveHDNode('change', index), 'change'))
+      external: new Array(this._gapLimit).fill().map((value, index) =>
+        Wallet._deriveBIP49Address(this._deriveHDNode('external', index), 'external', this._network)),
+      change: new Array(CHANGE_GAP_LIMIT).fill().map((value, index) =>
+        Wallet._deriveBIP49Address(this._deriveHDNode('change', index), 'change', this._network))
     }
 
     // subscribe to address updates (if network is not disabled)
@@ -188,14 +190,14 @@ module.exports = class Wallet {
   // ----------------
   // addresses
 
-  static _deriveBIP49Address (hdNode, type) {
+  static _deriveBIP49Address (hdNode, type, network) {
     // derives a P2SH(P2WPKH) address from the relevant HD key for a given index
     const keyhash = bitcoin.crypto.hash160(hdNode.getPublicKeyBuffer())
     const scriptSig = bitcoin.script.witnessPubKeyHash.output.encode(keyhash)
     const addressBytes = bitcoin.crypto.hash160(scriptSig)
     const outputScript = bitcoin.script.scriptHash.output.encode(addressBytes)
 
-    const id = bitcoin.address.fromOutputScript(outputScript, this._network)
+    const id = bitcoin.address.fromOutputScript(outputScript, network)
     const scriptHash = bitcoin.crypto.sha256(outputScript)
 
     // initial address object
@@ -235,7 +237,7 @@ module.exports = class Wallet {
     // creates and appends as many addresses as specified
     const length = this._addresses[type].length
     const newAddresses = new Array(amount).fill().map((value, index) =>
-      Wallet._deriveBIP49Address(this._deriveHDNode(type, index + length), type))
+      Wallet._deriveBIP49Address(this._deriveHDNode(type, index + length), type, this._network))
     this._addresses[type] = this._addresses[type].concat(newAddresses)
   }
 
@@ -373,13 +375,15 @@ module.exports = class Wallet {
     if (direction === 'in') {
       if (inputOwnedBalance === 0) {
         peers = inputExternalAddresses
-      } else throw new Error('Type of transaction not covered yet (owned inputs on incoming transaction)')
+      } else peers = 'Not supported'
+      // throw new Error(`Type of transaction not covered yet (owned inputs on incoming transaction)\nTX: ${hash}`)
     } else { // out
       if (allInputOwned) {
         peers = outputExternalAddresses
         feePaidByWallet = true
         amountSatoshis -= feeSatoshis
-      } else throw new Error('Type of transaction not covered yet (external inputs on outgoing transaction)')
+      } else peers = 'Not supported'
+      // throw new Error(`Type of transaction not covered yet (external inputs on outgoing transaction)\nTX: ${hash}`)
     }
 
     const amount = satoshisToCoins(amountSatoshis)

@@ -120,10 +120,9 @@ Retrieves the current wallet balance and the estimation for the secondary curren
 **Parameters**
 
 -   `options` **[object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** Options for the getBalance operation (optional, default `{}`)
-    -   `options.secondaryCurrency` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** Overwrites the secondary currency setting
-    -   `options.withSymbol` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** Returns strings with the currency symbol appended instead of just numbers for balances
+    -   `options.unit` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** Unit of measure (`coins` \| `satoshis`)
 
-Returns **[Promise](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;{balance: [number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number), secondary: {balance: [number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number), currency: [string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)}}>** Object that contains the balance of the wallet currency and the secondary currency information
+Returns **[Promise](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)>** Current balance of the wallet
 
 ### create
 
