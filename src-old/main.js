@@ -111,6 +111,7 @@ module.exports = class Wallet {
     if (!this._initialized) throw new Error('Wallet is not initialized yet')
   }
 
+  // DONE!!!
   async _onInitialized () {
     // can be used in async functions by adding: await this._onInitialized()
     // statements after it will be run only if/once wallet is initialized
@@ -119,6 +120,7 @@ module.exports = class Wallet {
     if (!this._initialized) return this._initializationPromise
   }
 
+  // DONE!!!
   _initializeBIP39BIP49Secret () {
     // github.com/bitcoin/bips/blob/master/bip-0039.mediawiki
 
@@ -144,6 +146,7 @@ module.exports = class Wallet {
   // ----------------
   // hd wallet
 
+  // TODO: bip 32 secret (xpriv)
   _initializeBIP49Secret () {
     // github.com/bitcoin/bips/blob/master/bip-0032.mediawiki
 
@@ -190,6 +193,7 @@ module.exports = class Wallet {
   // ----------------
   // addresses
 
+  // DONE!!!
   static _deriveBIP49Address (hdNode, type, network) {
     // derives a P2SH(P2WPKH) address from the relevant HD key for a given index
     const keyhash = bitcoin.crypto.hash160(hdNode.getPublicKeyBuffer())
@@ -342,6 +346,7 @@ module.exports = class Wallet {
   // ----------------
   // transaction
 
+  // DONE!!!
   static _parseTransactionIO (inputData, outputData) {
     const {
       // inputAddresses,
@@ -404,6 +409,7 @@ module.exports = class Wallet {
     }
   }
 
+  // DONE!!!
   static _parseOutputs (outputs, network, getAddressInfo) {
     const outputAddresses = []
     const outputExternalAddresses = []
@@ -427,6 +433,7 @@ module.exports = class Wallet {
     }
   }
 
+  // DONE!!!
   static _parseRawTransaction (hex) {
     return {
       hex,
@@ -434,6 +441,7 @@ module.exports = class Wallet {
     }
   }
 
+  // DONE!!!
   static async _retrieveAndParseInputs (inputs, network, retrieveRawTransaction, getAddressInfo) {
     const inputAddresses = []
     const inputExternalAddresses = []
@@ -463,6 +471,7 @@ module.exports = class Wallet {
     }
   }
 
+  // DONE!!!
   async _retrieveRawTransaction (hash) {
     if (hash instanceof Buffer) hash = hash.toString('hex')
 
@@ -481,6 +490,7 @@ module.exports = class Wallet {
     return tx
   }
 
+  // DONE!!!
   async _retrieveTransaction (hash, height) {
     if (hash instanceof Buffer) hash = hash.toString('hex')
 
@@ -569,6 +579,7 @@ module.exports = class Wallet {
   // ----------------
   // interface
 
+  // DONE!!!
   /**
    * Resolves once wallet is up-to-date and ready to be used (or immediately if that's already the current state)
    *

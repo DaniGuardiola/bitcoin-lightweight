@@ -1,10 +1,13 @@
-const Wallet = require('./main')
+const { Wallet } = require('./dist/main')
 
-const recoveryPhrase = 'attend ordinary entire myth leg utility flat jacket trade smart despair clerk'
+const seed = 'attend ordinary entire myth leg utility flat jacket trade smart despair clerk'
 
 const run = async () => {
-  const wallet = new Wallet('bitcoin_electrum_BIP39_BIP49', recoveryPhrase, { network: 'testnet' })
+  const wallet = new Wallet('BITCOIN_ELECTRUM_BIP39_BIP49', seed, { network: 'testnet' })
 
+  console.log(wallet)
+
+  /*
   const prettyLog = x => console.log(`Direction: ${x.direction}, amount: ${x.amount}${
     x.feePaidByWallet ? `, fee: ${x.fee}` : ''}, total: ${x.total}`)
 

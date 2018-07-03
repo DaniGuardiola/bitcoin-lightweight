@@ -2,23 +2,31 @@
   "name": "bitcoin-lightweight",
   "version": "0.0.1",
   "description": "Lightweight Bitcoin electrum wallet module, with BIP44, SPV, events and a friendly high level interface",
-  "main": "main.js",
+  "main": "src-old/main.js",
   "repository": "git@gitlab.com:altruist-projects/fairwallet-lib.git",
   "author": "Dani Guardiola",
   "license": "MIT",
   "devDependencies": {
+    "@types/bip39": "^2.4.0",
+    "@types/bitcoinjs-lib": "^3.4.0",
+    "@types/bluebird-global": "^3.5.5",
+    "@types/joi": "^13.3.0",
+    "@types/node": "^10.5.1",
     "chai": "^4.1.2",
     "chai-as-promised": "^7.1.1",
-    "docco": "^0.8.0",
-    "documentation": "^6.3.2",
-    "mocha": "^5.1.1",
+    "mocha": "^5.2.0",
     "npm-check": "^5.7.0",
     "nsp": "^3.2.1",
-    "nyc": "^11.7.1",
+    "nyc": "^12.0.2",
     "pre-commit": "^1.2.2",
-    "standard": "^11.0.1"
+    "standard": "^11.0.1",
+    "tslint": "^5.10.0",
+    "tslint-config-standard": "^7.1.0",
+    "typedoc": "^0.11.1",
+    "typescript": "^2.8.0"
   },
   "scripts": {
+    "build": "rm -rf dist && tsc -p ./",
     "lint": "standard",
     "fix": "standard --fix",
     "test": "nyc --check-coverage --lines 0 mocha",
@@ -27,17 +35,15 @@
     "check-deps": "npm-check -p",
     "coverage": "nyc check-coverage --lines 90",
     "coverage-report": "nyc report --reporter html --report-dir coverage",
-    "code-doc": "docco --output docs *.js",
-    "api-doc": "documentation readme main.js src/*.js -s 'API reference'",
-    "docs": "yarn -s code-doc && yarn -s api-doc",
-    "git-add-docs": "git add docs"
+    "clean-docs": "rm -rf docs",
+    "docs": "npm run clean-docs -s && typedoc --out docs src"
   },
   "pre-commit": [
     "test",
     "lint",
+    "clean-docs",
     "check-deps",
     "docs",
-    "git-add-docs",
     "check-security"
   ],
   "dependencies": {

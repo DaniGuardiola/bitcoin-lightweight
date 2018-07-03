@@ -1,6 +1,8 @@
 # bitcoin-lightweight
 
-A friendly lightweight Bitcoin wallet, using electrumx servers as backend and with a complete set of features:
+A friendly lightweight Bitcoin wallet written in typescript
+
+# Features
 
 -   BIP49 key derivation, with external and change addresses
 -   BIP39 seed (mnemonic phrase) generation or import with optional passphrase
@@ -13,49 +15,40 @@ A friendly lightweight Bitcoin wallet, using electrumx servers as backend and wi
 -   Storage-friendly: a normalized way to save and restore the state of the JavaScript class to load your app or service fast
 -   Really easy to use and high level API, so you can focus on building your own great user interface or API
 
+# Tech stack
+
+- [Typescript](https://www.typescriptlang.org/) codebase (more security, faster development, less bugs!)
+- [BitcoinJS](https://github.com/bitcoinjs/bitcoinjs-lib/) module for blockchain logic (heavily tested and powerful library)
+- [Joi](https://github.com/hapijs/joi) validation of input (keep those bugs away!)
+- [ElectrumX](https://electrumx.readthedocs.io/en/latest/) servers as backend (socket and websocket connections with TLS supported)
+- [electrum-client](https://github.com/DaniGuardiola/node-electrum-client) module to communicate with electrumx servers (written in typescript, maintained by us)
+
 # Usage
 
 ```js
-import Wallet from 'bitcoin-lightweight'
-
-const wallet = new Wallet(
-  'bitcoin_electrum_bip39',                     // wallet type
-  'chair window sun guitar piano sky brick',    // secret
-  { network: 'testnet' })                       // options
+import { Wallet } from 'bitcoin-lightweight'
 
 const app = async () {
-  await wallet.ready()                          // wait for 100% load
+  const wallet = new Wallet(                    // create a Wallet instance
+    'BITCOIN_ELECTRUM_BIP39',                   // wallet type
+    'chair window sun guitar piano sky brick',  // secret
+    { network: 'testnet' })                     // options
+
+  await wallet.ready()                          // wait for 100% load (all data downloaded, parsed and processed)
 
   const bitcoinBalance = wallet.getBalance()    // obtain wallet balance in bitcoin
   console.log()
 
-  const euroBalance = wallet.getBalance('EUR')  // obtain balance in euro
-
-  const txFilter = {
-    before: timestamp,                  // block timestamp
-    after: timestamp,                   // block timestamp
-    from: [<addresses>],                // list of addresses
-    to: [<addresses>],                  // list of addresses
-    direction: 'out' / 'in',            // direction of the transfer
-    min: <amount of bitcoin>,           // amount of bitcoin transferred
-    max: <amount of bitcoin>,           // amount of bitcoin transferred
-    description: <substring or regex>   // description text search
-  }
-
-  const txs = wallet.getTransactions(   // obtain transactions
-    txFilter,                           // transaction filter
-    10,                                 // items per page
-    3)                                  // page number
-
-  wallet.send(10, <address>)            // send someone bitcoin
-
-  wallet.receive()                      // get last unused address
+  const euroBalance = wallet.getBalance()       // obtain balance in euro
+  const txs = wallet.getTransactions()          // obtain transactions
+  await wallet.send(10, '3b2re3n4vvbbnfndm4b3m1s')    // send some bitcoin
+  wallet.receive()                              // get last unused address
 }
 
 app()
 ```
 
-> Note: keep in mind that wallet is refered to at times as the collection of addresses and their private keys that hold the ownership of the Bitcoins (not the wallet software itself). 
+> Note: the concept of a "wallet" can be also used to describe a collection of addresses and their private keys, instead of the wallet software itself.
 
 Two types of Bitcoin electrum wallets are supported:
 
@@ -67,8 +60,7 @@ Two types of Bitcoin electrum wallets are supported:
 
 Generated from a "seed" phrase comformed of multiple words separated by spaces, making it friendly and easier to remember than a standard private key. Generates a BIP32 HD key (read below).
 
-ID: `bitcoin_electrum_BIP39_BIP49`
-Secret: 
+ID: `BITCOIN_ELECTRUM_BIP39_BIP49`
 
 -   BIP-32 (Hierarchical Deterministic key)
 
@@ -76,61 +68,8 @@ Secret:
 
 Generated from a private HD key. A Hierarchical Deterministic (HD) key is a seed that can be derived into multiple sub-keys or addresses. BIP39 phrases are converted to BIP32 seeds.
 
-The derivation path is BIP49 with addresses only from default account at index 0. Addresses are P2SH(P2WPKH) or Pay To Witness (segwit) Public Key Hash wrapped in Pay To Script Hash.
+Currently, the only derivation path is BIP49 with addresses only from default account at index 0. Addresses are P2SH(P2WPKH) or Pay To Witness (segwit) Public Key Hash wrapped in Pay To Script Hash.
 
 > [BIP-0049 spec](github.com/bitcoin/bips/blob/master/bip-004.mediawiki)
 
-ID: `bitcoin_electrum_BIP49`
-
-# API reference
-
-<!-- Generated by documentation.js. Update this documentation by updating the source code. -->
-
-### Table of Contents
-
--   [main](#main)
-    -   [onReady](#onready)
-    -   [getAddresses](#getaddresses)
-    -   [getBalance](#getbalance)
-    -   [create](#create)
-
-## main
-
-Abstracts the logic of wallets, supporting multiple types for multiple currencies.
-
-**Parameters**
-
--   `type` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** Type of wallet
--   `secret` **([string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String) \| [object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object))** Private information that provides full access to the wallet
-
-### onReady
-
-Resolves once wallet is up-to-date and ready to be used (or immediately if that's already the current state)
-
-Returns **[Promise](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise)** Resolves only once ready
-
-### getAddresses
-
-Returns **{external: [array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;{id: [string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String), balance: [number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)}>, change: [array](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Array)&lt;{id: [string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String), balance: [number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)}>}** Addresses and their current balances
-
-### getBalance
-
-Retrieves the current wallet balance and the estimation for the secondary currency
-
-**Parameters**
-
--   `options` **[object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** Options for the getBalance operation (optional, default `{}`)
-    -   `options.unit` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** Unit of measure (`coins` \| `satoshis`)
-
-Returns **[Promise](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise)&lt;[number](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Number)>** Current balance of the wallet
-
-### create
-
-Creates a new wallet
-
-**Parameters**
-
--   `type` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** Wallet type
--   `options` **[object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** Options for wallet creation (optional, default `{}`)
-
-Returns **Wallet** Wallet instance
+ID: `BITCOIN_ELECTRUM_BIP49`
