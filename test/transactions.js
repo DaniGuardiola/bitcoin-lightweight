@@ -4,7 +4,7 @@ chai.use(require('chai-as-promised'))
 
 const tx = require('../dist/lib/transactions')
 
-const txFixtures = require('./fixtures/transactions')
+const FIXTURES = require('./fixtures/transactions')
 
 chai.should()
 
@@ -13,7 +13,7 @@ const shorten = (string, length) =>
 
 describe('transactions', () => {
   describe('parseTransactionHex', () => {
-    const fixtures = txFixtures.parseTransactionHex
+    const fixtures = FIXTURES.parseTransactionHex
     describe('correctly parses hex-serialized transactions', () => {
       fixtures.pass.forEach(fixture => {
         it(shorten(fixture.input.toString(), 35), () => {
@@ -37,5 +37,5 @@ describe('transactions', () => {
   describe('parseOutputs', () => {}) // TODO
   describe('parseTransactionIO', () => {}) // TODO
   describe('parseTransaction', () => {}) // TODO
-  describe('retrieveTransactionData', () => {}) // TODO
+  describe('retrieveTransactionData', async () => {}) // TODO
 })
