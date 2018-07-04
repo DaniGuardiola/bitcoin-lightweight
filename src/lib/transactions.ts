@@ -1,6 +1,11 @@
 import * as bitcoin from 'bitcoinjs-lib'
 
 // ----------------
+// types
+
+type TIsAddressOwned = (address: string) => boolean
+
+// ----------------
 // interfaces
 
 /** BitcoinJS input (In) that includes 'originalOutput' being spent */
@@ -55,17 +60,7 @@ export interface IRawTransaction {
 }
 
 // ----------------
-// parse
-
-/**
- * Parses a transaction serialized in hexadecimal format
- *
- * @param hex Serialized transaction
- */
-export const parseTransactionHex = (hex: string): IRawTransaction => ({
-  hex,
-  transaction: bitcoin.Transaction.fromHex(hex)
-})
+// parse input / output data
 
 /**
  * Parses the inputs of a transation to return wallet-aware data
@@ -74,7 +69,7 @@ export const parseTransactionHex = (hex: string): IRawTransaction => ({
  * @param isAddressOwned Methods that checks if a transaction is owned by a wallet
  * @param network Network of the transaction
  */
-export function parseInputs (inputs: IExtendedIn[], isAddressOwned: (address: string) => boolean, network: bitcoin.Network): IInputData {
+export function parseInputs (inputs: IExtendedIn[], isAddressOwned: TIsAddressOwned, network: bitcoin.Network): IInputData {
   const inputExternalAddresses: string[] = []
   let inputBalance = 0
   let inputOwnedBalance = 0
@@ -103,7 +98,7 @@ export function parseInputs (inputs: IExtendedIn[], isAddressOwned: (address: st
  * @param isAddressOwned Method that checks if a transaction is owned by a wallet
  * @param network Network of the transaction
  */
-export function parseOutputs (outputs: bitcoin.Out[], isAddressOwned: (address: string) => boolean, network: bitcoin.Network): IOutputData {
+export function parseOutputs (outputs: bitcoin.Out[], isAddressOwned: TIsAddressOwned, network: bitcoin.Network): IOutputData {
   const outputExternalAddresses: string[] = []
   let outputBalance = 0
   let outputOwnedBalance = 0
@@ -178,13 +173,26 @@ export function parseTransactionIO (inputData: IInputData, outputData: IOutputDa
   }
 }
 
+// ----------------
+// parse transaction data
+
+/**
+ * Parses a transaction serialized in hexadecimal format
+ *
+ * @param hex Serialized transaction
+ */
+export const parseTransactionHex = (hex: string): IRawTransaction => ({
+  hex,
+  transaction: bitcoin.Transaction.fromHex(hex)
+})
+
 /**
  * Parses transaction data and returns wallet-aware data
  *
  * @param transactionData Transaction full data
  * @param isAddressOwned Methods that checks if a transaction is owned by a wallet
  */
-export function parseTransaction (transactionData: ITransactionData, isAddressOwned: (address: string) => boolean): ITransaction {
+export function parseTransaction (transactionData: ITransactionData, isAddressOwned: TIsAddressOwned): ITransaction {
   const { hash, height, network, ins, outs } = transactionData
 
   const inputData = parseInputs(ins,
