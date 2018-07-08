@@ -1,11 +1,13 @@
+import * as $ from '../settings'
+
 import * as bitcoin from 'bitcoinjs-lib'
 
 // ----------------
 // interfaces
 
-interface IAddressTx {
-  hex: string
-  tx_height: number
+export interface IAddressTransaction {
+  height: number
+  tx_hash: string
 }
 
 export interface IAddress {
@@ -14,14 +16,14 @@ export interface IAddress {
   scriptHash: Buffer
   subscribed: boolean
   status: string | null
-  history: IAddressTx[]
+  history: IAddressTransaction[]
   balance: number
 }
 
 // ----------------
 // methods
 
-export function deriveBIP49Address (hdNode: bitcoin.HDNode, type: string, network: bitcoin.Network): IAddress {
+export function deriveBIP49Address (hdNode: bitcoin.HDNode, type: string = 'missing', network: bitcoin.Network = $.DEFAULT_NETWORK): IAddress {
   // derives a P2SH(P2WPKH) address from the relevant HD key for a given index
   const keyhash = bitcoin.crypto.hash160(hdNode.getPublicKeyBuffer())
   const scriptSig = bitcoin.script.witnessPubKeyHash.output.encode(keyhash)

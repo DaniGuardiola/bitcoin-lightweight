@@ -3,7 +3,7 @@ import * as bitcoin from 'bitcoinjs-lib'
 // ----------------
 // types
 
-type TIsAddressOwned = (address: string) => boolean
+export type TIsAddressOwned = (address: string) => boolean
 
 // ----------------
 // interfaces
@@ -227,7 +227,10 @@ export async function retrieveTransactionData (hash: string, height: number, raw
   const { transaction: { ins: originalIns, outs } } = rawTransaction
 
   const ins = await Promise.map(originalIns, async (input: bitcoin.In): Promise<IExtendedIn> => {
-    const { transaction: originalTx } = await retrieveRawTransaction(input.hash.toString())
+    const inputScriptCopy = Buffer.alloc(input.hash.length)
+    input.hash.copy(inputScriptCopy)
+    const hash = Buffer.from(inputScriptCopy.reverse()).toString('hex')
+    const { transaction: originalTx } = await retrieveRawTransaction(hash)
     return Object.assign({}, input, { originalOutput: originalTx.outs[input.index] })
   })
 

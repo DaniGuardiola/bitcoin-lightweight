@@ -1,11 +1,17 @@
-const { Wallet } = require('./dist/main')
+const Wallet = require('.').default
 
 const seed = 'attend ordinary entire myth leg utility flat jacket trade smart despair clerk'
 
 const run = async () => {
-  const wallet = new Wallet('BITCOIN_ELECTRUM_BIP39_BIP49', seed, { network: 'testnet' })
+  const wallet = new Wallet('BITCOIN_ELECTRUM_BIP39', { seed }, { network: 'testnet' })
 
-  console.log(wallet)
+  await wallet.ready()
+
+  console.log(wallet.getTransactions())
+  console.log(wallet.getTransactions().map(x => x.height))
+
+  // console.log(wallet._bip32Wallet)
+  // console.log(wallet)
 
   /*
   const prettyLog = x => console.log(`Direction: ${x.direction}, amount: ${x.amount}${

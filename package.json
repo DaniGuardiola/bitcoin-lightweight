@@ -2,7 +2,7 @@
   "name": "bitcoin-lightweight",
   "version": "0.0.1",
   "description": "Lightweight Bitcoin electrum wallet module, with BIP44, SPV, events and a friendly high level interface",
-  "main": "src-old/main.js",
+  "main": "dist/main.js",
   "repository": "git@gitlab.com:altruist-projects/fairwallet-lib.git",
   "author": "Dani Guardiola",
   "license": "MIT",
@@ -50,7 +50,7 @@
     "bip39": "^2.5.0",
     "bitcoinjs-lib": "^3.3.2",
     "bluebird": "^3.5.1",
-    "electrum-client": "gitlab:DaniGuardiola/node-electrum-client",
+    "electrum-client": "github:DaniGuardiola/node-electrum-client#next_v0.1",
     "joi": "^13.4.0",
     "satoshi-bitcoin": "^1.0.4"
   }

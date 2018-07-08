@@ -1,5 +1,5 @@
 import * as bip39 from 'bip39'
-import { Network } from 'bitcoinjs-lib'
+// import { Network } from 'bitcoinjs-lib'
 
 export interface IBIP39Secret {
   seed: string
@@ -10,7 +10,7 @@ export interface IBIP32Secret {
   seed: Buffer
 }
 
-export function _parseBIP39Secret (secret: IBIP39Secret): Buffer {
+export function parseBIP39Secret (secret: IBIP39Secret): Buffer {
   // github.com/bitcoin/bips/blob/master/bip-0039.mediawiki
   const originalSeed = secret.seed
   const passphrase = secret.passphrase
