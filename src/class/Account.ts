@@ -1,20 +1,22 @@
 import * as $ from '../settings'
-import { IAddress, IAddressTransaction, deriveBIP49Address } from '../lib/addresses'
+import { IAddress, IAddressTransaction, toBIP49Address, getElectrumP2shID } from '../lib/addresses'
 import TransactionStorage from './TransactionStorage'
 import ElectrumClient from '../../tmp/dist/main'
 
 import * as bitcoin from 'bitcoinjs-lib'
 import { EventEmitter } from 'events'
+import { ITransaction } from '../lib/transactions'
 
 // ----------------
 // interfaces
 
 export interface IAccount {
-  _external: IAddress[]
-  _change: IAddress[]
+  initialize: () => Promise<void>
+  getTransactions: () => ITransaction[]
+  getUnusedAddress: (index?: number) => string
 }
 
-interface IOptions {
+interface IAccountOptions {
   network?: bitcoin.Network
   gapLimit?: number
 }
@@ -24,30 +26,39 @@ interface IAddressLocation {
   index: number
 }
 
+interface IHistoryAndStatus {
+  history: IAddressTransaction[]
+  status: string | null
+}
+
 // ----------------
 // bip32 account class
 
 export default class Account extends EventEmitter implements IAccount {
+  private _initialized: boolean
   private _network: bitcoin.Network
   private _gapLimit: number
   private _externalHDNode: bitcoin.HDNode
   private _changeHDNode: bitcoin.HDNode
   private _electrum?: ElectrumClient
   private _transactionStorage: TransactionStorage
-  public _external: IAddress[]
-  public _change: IAddress[]
+  private _external: IAddress[]
+  private _change: IAddress[]
+  private _unusedAddresses: number
 
-  constructor (accountHDNode: bitcoin.HDNode, electrum?: ElectrumClient, options: IOptions = {}) {
+  constructor (accountHDNode: bitcoin.HDNode, electrum?: ElectrumClient, options: IAccountOptions = {}) {
     super()
+    this._initialized = false
     this._electrum = electrum
 
     // init account HD nodes
     this._externalHDNode = accountHDNode.derive(0)
     this._changeHDNode = accountHDNode.derive(1)
 
-    // init external and change props
+    // init address-related props
     this._external = []
     this._change = []
+    this._unusedAddresses = 0
 
     // options
     this._network = options.network || $.DEFAULT_NETWORK
@@ -59,7 +70,7 @@ export default class Account extends EventEmitter implements IAccount {
     : async (hash: string): Promise<string> => ''
 
     const isAddressOwned = (address: string) =>
-      this._getAddressLocationFromId(address).index > -1
+      this._getAddressLocation(address).index > -1
     this._transactionStorage = new TransactionStorage(this._network, retrieveTransactionHex, isAddressOwned)
 
     // subscribe to address notifications
@@ -72,16 +83,22 @@ export default class Account extends EventEmitter implements IAccount {
   // ----------------
   // electrum calls
 
-  private async _electrumSubscribe (scriptHash: string): Promise<string> {
-    return this._electrum
-      ? this._electrum.methods.blockchain_scripthash_subscribe(scriptHash)
-      : ''
+  private _getElectrumID (addressID: string): string {
+    return getElectrumP2shID(addressID, this._network)
   }
 
-  private async _electrumGetHistory (addressId: string): Promise<IAddressTransaction[]> {
+  private async _electrumScripthashMethod (method: string, addressID: string, defaultValue: any): Promise<any> {
     return this._electrum
-      ? this._electrum.methods.blockchain_scripthash_getHistory(addressId)
-      : []
+      ? this._electrum.methods[`blockchain_scripthash_${method}`](this._getElectrumID(addressID))
+      : defaultValue
+  }
+
+  private async _electrumSubscribe (addressID: string): Promise<string> {
+    return this._electrumScripthashMethod('subscribe', addressID, '')
+  }
+
+  private async _electrumGetHistory (addressID: string): Promise<IAddressTransaction[]> {
+    return this._electrumScripthashMethod('getHistory', addressID, [])
   }
 
   // ----------------
@@ -93,7 +110,7 @@ export default class Account extends EventEmitter implements IAccount {
       : this._changeHDNode.derive(index)
   }
 
-  private _computeAddressStatus (history: IAddressTransaction[]): Buffer | null {
+  private _computeAddressStatus (history: IAddressTransaction[]): string | null {
     // electrumx.readthedocs.io/en/latest/protocol-basics.html#status
     if (!history.length) return null
 
@@ -103,80 +120,77 @@ export default class Account extends EventEmitter implements IAccount {
       return a.height > b.height ? 1 : -1
     }).reduce((out, tx) => `${out}${tx.tx_hash}:${tx.height}:`, '')
 
-    return bitcoin.crypto.sha256(Buffer.from(concatenatedHistory))
+    return bitcoin.crypto.sha256(Buffer.from(concatenatedHistory)).toString('hex')
   }
 
-  private _getAddressLocationFromId (addressId: string, type?: string): IAddressLocation {
-    // returns the type and index of an address id
-
-    const typeProp = `_${type}`
-
-    // if type is specified
-    if (type) {
-      return {
-        type,
-        index: this[typeProp].findIndex(address => address.id === addressId)
-      }
-    }
-
-    let index
+  private _getAddressLocation (addressId: string): IAddressLocation {
+    // returns the type and index of an address
+    let type = 'none'
+    let index: number
 
     // try 'external' type
-    type = 'external'
-    index = this._getAddressLocationFromId(addressId, type).index
+    index = this._external.findIndex(address => address.id === addressId)
 
-    if (index < 0) { // if not found as 'external', try 'change' type
-      type = 'change'
-      index = this._getAddressLocationFromId(addressId, type).index
+    if (index > -1) { // if found, set 'external' type
+      type = 'external'
+    } else { // if not found as 'external', try 'change' type
+      index = this._change.findIndex(address => address.id === addressId)
+      if (index > -1) type = 'change' // if found, set 'change' type
     }
 
-    // if not found, return false
-    if (index < 0) return { type: 'none', index: -1 }
+    // if not found as neither type, return 'none' type (index is -1)
 
     return { type, index }
+  }
+
+  private _ensureInitialized (): void {
+    if (!this._initialized) throw new Error('Account is not initialized yet!')
   }
 
   // ----------------
   // address operations
 
-  private async _initAddress (address) {
-    let status
-
+  private async _initAddress (address: IAddress): Promise<IAddress> {
     // if already subscribed, no need to pull history
     if (address.subscribed) return address
 
-    const scriptHashBuffer = Buffer.alloc(address.scriptHash.length)
-    address.scriptHash.copy(scriptHashBuffer)
-    const scriptHash = Buffer.from(scriptHashBuffer.reverse()).toString('hex')
-    status = await this._electrumSubscribe(scriptHash)
+    const status = await this._electrumSubscribe(address.id)
     address.subscribed = true
 
-    if (address.status !== status) Object.assign(address, await this._fetchAddressHistory(scriptHash))
+    if (address.status !== status) Object.assign(address, await this._fetchAddressHistoryAndStatus(address.id))
+
+    if (address.history.length === 0 && address.type === 'external') this._unusedAddresses++
 
     return address
   }
 
-  private async _updateAddressHistoryById (id: string) {
-    // updates the history of an address by id (updates local record)
+  private async _updateAddressHistoryById (id: string): Promise<void> {
+    // updates the history of an address by id
 
-    const addressLocation = this._getAddressLocationFromId(id)
+    const addressLocation = this._getAddressLocation(id)
     const { index, type } = addressLocation
 
     const typeProp = `_${type}`
+    const address: IAddress = this[typeProp][index]
+    const wasUnused = address.history.length === 0
 
-    await this._fetchAddressHistory(this[typeProp][index].id)
+    await this._fetchAddressHistoryAndStatus(address.id)
 
-    Object.assign(this[typeProp][index], await this._fetchAddressHistory(this[typeProp][index].id))
+    Object.assign(address, await this._fetchAddressHistoryAndStatus(address.id))
+
+    const isUsedNow = address.history.length !== 0
+
+    if (wasUnused && isUsedNow && address.type === 'external') this._unusedAddresses--
   }
 
   // ----------------
   // address list operations
 
-  private async _updateAddresses () {
-    const subscribeAddress = address => this._initAddress(address)
+  private async _updateAddresses (): Promise<void> {
+    const subscribeAddress = (address) => this._initAddress(address)
 
     // take care of not subscribed / outdated addresses
-    return Promise.mapSeries(['_external', '_change'], key => Promise
+    await Promise.mapSeries(['_external', '_change'], key => Promise
       .map(this[key], subscribeAddress, { concurrency: $.ADDRESSES_UPDATE_CONCURRENCY })
       .then(result => this[key] = result))
   }
@@ -186,7 +200,7 @@ export default class Account extends EventEmitter implements IAccount {
     const typeProp = `_${type}`
     const length = this[typeProp].length
     const newAddresses = new Array(amount).fill(0).map((value, index) =>
-      deriveBIP49Address(this._deriveHDNode(type, index + length), type, this._network))
+      toBIP49Address(this._deriveHDNode(type, index + length), this._network, type))
 
     this[typeProp] = this[typeProp].concat(newAddresses)
   }
@@ -242,12 +256,12 @@ export default class Account extends EventEmitter implements IAccount {
   // ----------------
   // data retrieval
 
-  private async _fetchAddressHistory (addressId) {
+  private async _fetchAddressHistoryAndStatus (addressID: string): Promise<IHistoryAndStatus> {
     // retrieves history for an address (does not mutate local record)
     // then retrieves and stores all transactions' data
 
-    const history: IAddressTransaction[] = await this._electrumGetHistory(addressId)
-    const status = this._computeAddressStatus(history)
+    const history: IAddressTransaction[] = await this._electrumGetHistory(addressID)
+    const status: string | null = this._computeAddressStatus(history)
 
     await Promise.map(history,
       tx => this._transactionStorage.retrieveTransaction(tx.tx_hash, tx.height),
@@ -259,11 +273,35 @@ export default class Account extends EventEmitter implements IAccount {
   // ----------------
   // interface
 
-  public async initialize () {
-    return this._syncAddresses()
+  public async initialize (): Promise<void> {
+    await this._syncAddresses()
+    this._initialized = true
   }
 
-  public getTransactions () {
+  public getTransactions (): ITransaction[] {
+    this._ensureInitialized()
     return this._transactionStorage.getTransactions()
+  }
+
+  public getNUnusedAddresses (): number {
+    return this._unusedAddresses
+  }
+
+  public getUnusedAddress (index: number = 0): string {
+    this._ensureInitialized()
+
+    const nUnusedAdresses = this.getNUnusedAddresses()
+    if (index > nUnusedAdresses - 1) throw new Error(`No unused address exists with index: ${index} (only ${nUnusedAdresses} available)`)
+
+    let unusedI = 0
+    const isUnusedIndex = address => {
+      const isUnused = address.history.length === 0
+      if (!isUnused) return false
+      if (unusedI === index) return true
+      unusedI++
+      return false
+    }
+
+    return this._external.find(isUnusedIndex)!.id
   }
 }

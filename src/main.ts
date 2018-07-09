@@ -12,6 +12,8 @@ import ElectrumClient from '../tmp/dist/main'
 // setup bluebird promises
 import * as _bluebirdPromise from 'bluebird'
 import { EventEmitter } from 'events'
+import { ITransaction } from './lib/transactions'
+import { convert } from './lib/units'
 global.Promise = _bluebirdPromise
 
 // ----------------
@@ -106,14 +108,14 @@ export default class Wallet extends EventEmitter implements IWallet {
   // ----------------
   // helpers
 
-  _ensureInitialized () {
+  private _ensureInitialized (): void {
     if (!this._initialized) throw new Error('Wallet is not initialized yet')
   }
 
   // ----------------
   // lifecycle
 
-  async _initializeWallet (): Promise<void> {
+  private async _initializeWallet (): Promise<void> {
     if (!this._test.disableNetwork) await this._electrum!.connect() // connect to electrum
     await this._bip32Wallet.initialize() //  initialize wallet
 
@@ -123,16 +125,26 @@ export default class Wallet extends EventEmitter implements IWallet {
   // ----------------
   // public interface
 
-  async ready (): Promise<void> {
+  public static convert (n: number, unit: string) {
+    return convert(n, unit)
+  }
+
+  public async ready (): Promise<void> {
     if (!this._initialized) return this._initializationPromise
   }
 
-  getTransactions () {
+  public getTransactions (): ITransaction[] {
     this._ensureInitialized()
     return this._bip32Wallet.getTransactions()
   }
 
-  getBalance (): number {
+  public getReceiveAddress (): string {
+    // TODO: rotate in each call
+    return this._bip32Wallet.mainAccount.getUnusedAddress()
+  }
+
+  // TODO
+  public getBalance (): number {
     return 6
   }
 }

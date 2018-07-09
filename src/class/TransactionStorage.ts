@@ -54,11 +54,17 @@ export default class TransactionStorage {
   // ----------------
   // storage
 
-  private _getRawTransaction (hash: string): any {
-    return this._rawTransactions.find((t: IStoredRawTransaction) => t.hash === hash)
+  private _getRawTransaction (hash: string): IRawTransaction | null {
+    const storedRawTransaction = this._rawTransactions.find((t: IStoredRawTransaction) => t.hash === hash)
+    if (!storedRawTransaction) return null
+    const rawTransaction = Object.assign({}, storedRawTransaction)
+    delete rawTransaction.hash
+    return rawTransaction
   }
 
-  private _putRawTransaction (storedRawTransaction: IStoredRawTransaction): void {
+  private _putRawTransaction (rawTransaction: IRawTransaction, hash: string): void {
+    if (this._getRawTransaction(hash)) throw new Error(`Raw transaction already exists in storage! ${hash}`)
+    const storedRawTransaction: IStoredRawTransaction = Object.assign({}, rawTransaction, { hash })
     this._rawTransactions.push(storedRawTransaction)
   }
 
@@ -67,6 +73,7 @@ export default class TransactionStorage {
   }
 
   private _putTransaction (transaction: ITransaction): void {
+    if (this._getTransaction(transaction.hash)) throw new Error(`Transaction already exists in storage! ${transaction.hash}`)
     this._transactions.push(transaction)
   }
 
@@ -75,17 +82,13 @@ export default class TransactionStorage {
 
   private async _retrieveRawTransaction (hash: string): Promise<IRawTransaction> {
     // - check storage
-    const stored = this._getRawTransaction(hash)
-    if (stored) {
-      const storedCopy = stored
-      delete storedCopy.hash
-      return storedCopy
-    }
+    const stored: IRawTransaction | null = this._getRawTransaction(hash)
+    if (stored) return stored
 
     // - retrieve
     const hex = await this._retrieveTransactionHex(hash) // get from electrumx server
     const rawTransaction = parseTransactionHex(hex) // parse
-    this._putRawTransaction(Object.assign({}, rawTransaction, { hash })) // write in cache
+    this._putRawTransaction(rawTransaction, hash) // write in storage
     return rawTransaction
   }
 
@@ -112,7 +115,7 @@ export default class TransactionStorage {
     return parsedTransaction
   }
 
-  public getTransactions () {
+  public getTransactions (): ITransaction[] {
     // sort transactions (older first)
     this._transactions = this._transactions
       .sort((a, b) => a.height > b.height ? 1 : -1)

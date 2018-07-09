@@ -5,10 +5,35 @@ const seed = 'attend ordinary entire myth leg utility flat jacket trade smart de
 const run = async () => {
   const wallet = new Wallet('BITCOIN_ELECTRUM_BIP39', { seed }, { network: 'testnet' })
 
+  /*
+  const amount = Wallet.convert(4321, 'sat')
+
+  console.log(Wallet.convert(1, 'bitcoins').toFactor(8888))
+  console.log(Wallet.convert(1, 'deca').toFactor(8888))
+  console.log(Wallet.convert(8888, 'mBTC').to('bits'))
+  console.log(Wallet.convert(1234, 'sat').to('mbtc'))
+  console.log(Wallet.convert(1234, 'sat').to('btc'))
+  console.log(Wallet.convert(1234, 'sat').to('MBTC'))
+  console.log(amount.to('MBTC'))
+  console.log(amount.to('mBTC'))
+  console.log(amount.to('msat'))
+  console.log(amount.to('deca'))
+  console.log(amount.to('dabtc'))
+  console.log(Wallet.convert(8, 'msat').to('MBTC'))
+  console.log(Wallet.convert(5, 'bitcoins').toFactor(1e-4))
+  console.log(Wallet.convert(1, 'btc').to('euro'))
+  console.log(Wallet.convert(0.01, 'btc').to('euro'))
+  console.log(Wallet.convert(1000, 'sat').to('euro'))
+  console.log(Wallet.convert(1, 'sat').to('euro'))
+  */
+
   await wallet.ready()
 
-  console.log(wallet.getTransactions())
-  console.log(wallet.getTransactions().map(x => x.height))
+  // console.log(wallet.getTransactions())
+  // console.log(wallet.getTransactions().map(x => x.height))
+
+  // console.log(wallet._bip32Wallet.mainAccount._external.map(x => `${x.id}, history: ${!!x.history.length}`))
+  // console.log(wallet.getReceiveAddress())
 
   // console.log(wallet._bip32Wallet)
   // console.log(wallet)

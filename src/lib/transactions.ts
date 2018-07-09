@@ -39,7 +39,7 @@ interface IOutputData {
 
 /** Transaction data computed from the input and output and wallet information */
 interface ITransactionIO {
-  direction: string
+  direction: 'in' | 'out'
   peers: string[]
   total: number
   amount: number
@@ -57,6 +57,24 @@ export interface ITransaction extends ITransactionIO {
 export interface IRawTransaction {
   hex: string
   transaction: bitcoin.Transaction
+}
+
+// ----------------
+// helpers
+
+function uniqStringArray (array: string[]): string[] {
+  let seen = {}
+  let out: string[] = []
+  let len = array.length
+  let j = 0
+  for (let i = 0; i < len; i++) {
+    let item = array[i]
+    if (seen[item] !== 1) {
+      seen[item] = 1
+      out[j++] = item
+    }
+  }
+  return out
 }
 
 // ----------------
@@ -162,6 +180,8 @@ export function parseTransactionIO (inputData: IInputData, outputData: IOutputDa
     } else peers = ['Not supported']
     // throw new Error(`Type of transaction not covered yet (external inputs on outgoing transaction)\nTX: ${hash}`)
   }
+
+  peers = uniqStringArray(peers)
 
   return {
     direction,

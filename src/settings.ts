@@ -4,4 +4,4 @@ export const DEFAULT_GAP_LIMIT = 20
 export const DEFAULT_NETWORK = bitcoin.networks.bitcoin
 export const CHANGE_GAP_LIMIT = 6
 export const ADDRESSES_UPDATE_CONCURRENCY = 20
-export const TRANSACTION_RETRIEVAL_CONCURRENCY = 5
+export const TRANSACTION_RETRIEVAL_CONCURRENCY = 10
