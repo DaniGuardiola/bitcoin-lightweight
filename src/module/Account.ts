@@ -1,11 +1,11 @@
 import * as $ from '../settings'
-import { IAddress, IAddressTransaction, toBIP49Address, getElectrumP2shID } from '../lib/addresses'
 import TransactionStorage from './TransactionStorage'
-import ElectrumClient from '../../tmp/dist/main'
+import { IAddress, IAddressTransaction, toBIP49Address, getElectrumP2shID } from '../lib/addresses'
+import { ITransaction } from '../lib/transactions'
 
+import ElectrumClient from '../../tmp/dist/main'
 import * as bitcoin from 'bitcoinjs-lib'
 import { EventEmitter } from 'events'
-import { ITransaction } from '../lib/transactions'
 
 // ----------------
 // interfaces

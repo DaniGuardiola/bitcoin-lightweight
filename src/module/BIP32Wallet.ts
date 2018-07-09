@@ -1,9 +1,9 @@
 import Account, { IAccount } from './Account'
-
-import * as bitcoin from 'bitcoinjs-lib'
-import ElectrumClient from '../../tmp/dist/main'
-import { EventEmitter } from 'events'
 import { ITransaction } from '../lib/transactions'
+
+import ElectrumClient from '../../tmp/dist/main'
+import * as bitcoin from 'bitcoinjs-lib'
+import { EventEmitter } from 'events'
 
 export default class BIP32Wallet extends EventEmitter {
   private _initialized: boolean

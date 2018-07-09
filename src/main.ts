@@ -2,11 +2,10 @@ import * as $ from './settings'
 import { WALLET_TYPES, IWalletType } from './fixtures/wallet-types'
 
 import { IBIP32Secret, IBIP39Secret, parseBIP39Secret } from './lib/secret'
-import BIP32Wallet from './class/BIP32Wallet'
+import BIP32Wallet from './module/BIP32Wallet'
 
 import * as Joi from 'joi'
 import * as bitcoin from 'bitcoinjs-lib'
-
 import ElectrumClient from '../tmp/dist/main'
 
 // setup bluebird promises
