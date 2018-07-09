@@ -11,3 +11,6 @@ dist
 
 # documentation
 docs
+
+# editors
+.vscode
