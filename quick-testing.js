@@ -9,10 +9,10 @@ const run = async () => {
   const amount = Wallet.convert(4321, 'sat')
 
   console.log(Wallet.convert(1, 'bitcoins').toFactor(8888))
+  console.log(Wallet.convert(1234, 'sat').to('btc'))
   console.log(Wallet.convert(1, 'deca').toFactor(8888))
   console.log(Wallet.convert(8888, 'mBTC').to('bits'))
   console.log(Wallet.convert(1234, 'sat').to('mbtc'))
-  console.log(Wallet.convert(1234, 'sat').to('btc'))
   console.log(Wallet.convert(1234, 'sat').to('MBTC'))
   console.log(amount.to('MBTC'))
   console.log(amount.to('mBTC'))

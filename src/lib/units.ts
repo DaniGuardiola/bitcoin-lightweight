@@ -10,19 +10,18 @@ interface IAmount {
 }
 
 const UNIT_FACTORS = { // where 1 = 1 btc
-  millisatoshi: new Big(1e3),
-  satoshi: new Big(1e8),
-  finney: new Big(1e7),
-  micro: new Big(1e6),
-  milli: new Big(1e3),
-  centi: new Big(1e2),
-  deci: new Big(10),
-  coin: new Big(1),
-  deca: new Big(0.1),
-  hecto: new Big(1e-2),
-  kilo: new Big(1e-3),
-  mega: new Big(1e-6),
-  euro: new Big(5691)
+  millisatoshi: 1e3,
+  satoshi: 1e8,
+  finney: 1e7,
+  micro: 1e6,
+  milli: 1e3,
+  centi: 1e2,
+  deci: 10,
+  coin: 1,
+  deca: 0.1,
+  hecto: 1e-2,
+  kilo: 1e-3,
+  mega: 1e-6
 }
 
 const UNIT_ALIASES = {
@@ -58,9 +57,9 @@ function getUnitFactor (unit: string): Big {
     if (alias) unit = alias
   }
 
-  const factor: Big = UNIT_FACTORS[unit.toLowerCase()]
+  const factor: number = UNIT_FACTORS[unit.toLowerCase()]
   if (!factor) throw new Error(`Unknown unit '${unit}'`)
-  return factor
+  return new Big(factor)
 }
 
 function transformUnit (amount: IAmount, to: string): number {
