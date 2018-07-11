@@ -1,7 +1,7 @@
 import Account, { IAccount } from './Account'
 import { ITransaction } from '../lib/transactions'
 
-import ElectrumClient from '../../tmp/dist/main'
+import ElectrumClient from '../../tmp/electrum-client/main'
 import * as bitcoin from 'bitcoinjs-lib'
 import { EventEmitter } from 'events'
 
