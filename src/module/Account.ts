@@ -3,7 +3,7 @@ import TransactionStorage from './TransactionStorage'
 import { IAddress, IAddressTransaction, toBIP49Address, getElectrumP2shID } from '../lib/addresses'
 import { ITransaction } from '../lib/transactions'
 
-import ElectrumClient from '../../tmp/dist/main'
+import ElectrumClient from '../../tmp/electrum-client/main'
 import * as bitcoin from 'bitcoinjs-lib'
 import { EventEmitter } from 'events'
 

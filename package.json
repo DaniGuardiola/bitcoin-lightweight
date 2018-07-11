@@ -28,8 +28,8 @@
   },
   "scripts": {
     "build": "rm -rf dist && tsc -p ./",
-    "lint": "standard",
-    "fix": "standard --fix",
+    "lint": "tslint",
+    "fix": "tslint --fix",
     "test": "nyc --check-coverage --lines 0 mocha",
     "test-watch": "mocha --watch",
     "check-security": "nsp check",

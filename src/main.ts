@@ -6,7 +6,7 @@ import BIP32Wallet from './module/BIP32Wallet'
 
 import * as Joi from 'joi'
 import * as bitcoin from 'bitcoinjs-lib'
-import ElectrumClient from '../tmp/dist/main'
+import ElectrumClient from '../tmp/electrum-client/main'
 
 // setup bluebird promises
 import * as _bluebirdPromise from 'bluebird'
@@ -64,7 +64,7 @@ export default class Wallet extends EventEmitter implements IWallet {
     this._type = WALLET_TYPES[typeId]
 
     // validate and store secret input
-    const initialSecret: IBIP32Secret | IBIP39Secret = Joi.attempt(secret, this._type.secretSchema)
+    Joi.attempt(secret, this._type.secretSchema)
 
     // validate and save options
     options = Joi.attempt(options, Joi.object({
