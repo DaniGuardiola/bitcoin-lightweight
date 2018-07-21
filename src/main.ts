@@ -138,7 +138,7 @@ export default class Wallet extends EventEmitter implements IWallet {
   }
 
   public getReceiveAddress (): string {
-    // TODO: rotate in each call
+    // TODO: rotate in each call?
     return this._bip32Wallet.mainAccount.getUnusedAddress()
   }
 

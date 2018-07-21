@@ -27,7 +27,9 @@
     "typescript": "^2.8.0"
   },
   "scripts": {
-    "build": "rm -rf dist && tsc -p ./",
+    "build-node": "rm -rf dist/node && tsc -p ./",
+    "build-browser": "rm -rf dist/browser && mkdir -p dist/browser && browserify src/main.ts -p [ tsify ] > dist/browser/bundle.js",
+    "build": "npm run build-node -s && npm run build-browser -s",
     "lint": "tslint",
     "fix": "tslint --fix",
     "test": "nyc --check-coverage --lines 0 mocha",
@@ -52,8 +54,10 @@
     "bip39": "^2.5.0",
     "bitcoinjs-lib": "^3.3.2",
     "bluebird": "^3.5.1",
+    "browserify": "^16.2.2",
     "electrum-client": "github:DaniGuardiola/node-electrum-client#next_v0.1",
     "joi": "^13.4.0",
-    "satoshi-bitcoin": "^1.0.4"
+    "satoshi-bitcoin": "^1.0.4",
+    "tsify": "^4.0.0"
   }
 }

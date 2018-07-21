@@ -2,7 +2,7 @@
 const chai = require('chai')
 chai.use(require('chai-as-promised'))
 
-const tx = require('../dist/lib/transactions')
+const tx = require('../dist/node/lib/transactions')
 
 const FIXTURES = require('./fixtures/transactions')
 
