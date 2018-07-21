@@ -4,6 +4,7 @@ import { ITransaction } from '../lib/transactions'
 import ElectrumClient from '../../tmp/electrum-client/main'
 import * as bitcoin from 'bitcoinjs-lib'
 import { EventEmitter } from 'events'
+import RawTransactionStorage from './RawTransactionStorage'
 
 export default class BIP32Wallet extends EventEmitter {
   private _initialized: boolean
@@ -11,6 +12,7 @@ export default class BIP32Wallet extends EventEmitter {
   private _accountsHDNode: bitcoin.HDNode
   private _network: bitcoin.Network
   private _electrum?: ElectrumClient
+  private _rawTransactionStorage: RawTransactionStorage
   public mainAccount: IAccount
 
   constructor (seed: Buffer, network: bitcoin.Network, bip32CoinId: number, electrumClient?: ElectrumClient) {
@@ -18,6 +20,7 @@ export default class BIP32Wallet extends EventEmitter {
     this._initialized = false
     this._electrum = electrumClient
     this._network = network
+    this._rawTransactionStorage = new RawTransactionStorage()
 
     // HD nodes
     this._rootHDNode = bitcoin.HDNode.fromSeedBuffer(seed, this._network)
@@ -34,6 +37,7 @@ export default class BIP32Wallet extends EventEmitter {
     const hdNode = this._accountsHDNode.deriveHardened(derivation)
     return new Account(
       hdNode,
+      this._rawTransactionStorage,
       this._electrum,
       { network: this._network })
   }

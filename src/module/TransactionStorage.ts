@@ -7,13 +7,10 @@ import {
  } from '../lib/transactions'
 
 import * as bitcoin from 'bitcoinjs-lib'
+import RawTransactionStorage from './RawTransactionStorage'
 
 // ----------------
 // interfaces and types
-
-interface IStoredRawTransaction extends IRawTransaction {
-  hash: string
-}
 
 type TRetrieveTransactionHex = (hash: string) => Promise<string>
 
@@ -25,13 +22,14 @@ type TRetrieveTransactionHex = (hash: string) => Promise<string>
  */
 export default class TransactionStorage {
   private _network: bitcoin.Network
-  private _rawTransactions: IStoredRawTransaction[]
+  private _rawTransactionStorage: RawTransactionStorage
   private _transactions: ITransaction[]
   private _retrieveTransactionHex: TRetrieveTransactionHex
   private _isAddressOwned: TIsAddressOwned
 
   constructor (
     network: bitcoin.Network,
+    rawTransactionStorage: RawTransactionStorage,
     retrieveTransactionHex: TRetrieveTransactionHex,
     isAddressOwned: TIsAddressOwned) {
 
@@ -45,7 +43,7 @@ export default class TransactionStorage {
     */
 
     this._network = network
-    this._rawTransactions = []
+    this._rawTransactionStorage = rawTransactionStorage
     this._transactions = []
     this._retrieveTransactionHex = retrieveTransactionHex
     this._isAddressOwned = isAddressOwned
@@ -53,20 +51,6 @@ export default class TransactionStorage {
 
   // ----------------
   // storage
-
-  private _getRawTransaction (hash: string): IRawTransaction | null {
-    const storedRawTransaction = this._rawTransactions.find((t: IStoredRawTransaction) => t.hash === hash)
-    if (!storedRawTransaction) return null
-    const rawTransaction = Object.assign({}, storedRawTransaction)
-    delete rawTransaction.hash
-    return rawTransaction
-  }
-
-  private _putRawTransaction (rawTransaction: IRawTransaction, hash: string): void {
-    if (this._getRawTransaction(hash)) throw new Error(`Raw transaction already exists in storage! ${hash}`)
-    const storedRawTransaction: IStoredRawTransaction = Object.assign({}, rawTransaction, { hash })
-    this._rawTransactions.push(storedRawTransaction)
-  }
 
   private _getTransaction (hash: string): any {
     return this._transactions.find((t: ITransaction) => t.hash === hash)
@@ -82,13 +66,13 @@ export default class TransactionStorage {
 
   private async _retrieveRawTransaction (hash: string): Promise<IRawTransaction> {
     // - check storage
-    const stored: IRawTransaction | null = this._getRawTransaction(hash)
+    const stored: IRawTransaction | null = this._rawTransactionStorage._getRawTransaction(hash)
     if (stored) return stored
 
     // - retrieve
     const hex = await this._retrieveTransactionHex(hash) // get from electrumx server
     const rawTransaction = parseTransactionHex(hex) // parse
-    this._putRawTransaction(rawTransaction, hash) // write in storage
+    this._rawTransactionStorage._putRawTransaction(rawTransaction, hash) // write in storage
     return rawTransaction
   }
 

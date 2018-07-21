@@ -10,31 +10,12 @@ export interface IAddressTransaction {
   tx_hash: string
 }
 
-export interface IAddress {
-  type: string
-  id: string
-  subscribed: boolean
-  status: string | null
-  history: IAddressTransaction[]
-  balance: number
-}
-
 // ----------------
 // methods
 
-export function toBIP49Address (hdNode: bitcoin.HDNode, network: bitcoin.Network = $.DEFAULT_NETWORK, type: string = 'unknown'): IAddress {
+export function hdNodeToBIP49Address (hdNode: bitcoin.HDNode, network: bitcoin.Network = $.DEFAULT_NETWORK): string {
   // derives a P2SH(P2WPKH) address from the relevant HD key for a given index
-  const id = getBIP49Address(hdNode.getPublicKeyBuffer(), network)
-
-  // initial address object
-  return {
-    type,
-    id,
-    subscribed: false,
-    status: null,
-    history: [],
-    balance: 0
-  }
+  return getBIP49Address(hdNode.getPublicKeyBuffer(), network)
 }
 
 export function getBIP49Address (publicKey: Buffer, network: bitcoin.Network = $.DEFAULT_NETWORK): string {

@@ -1,11 +1,13 @@
 import * as $ from '../settings'
 import TransactionStorage from './TransactionStorage'
-import { IAddress, IAddressTransaction, toBIP49Address, getElectrumP2shID } from '../lib/addresses'
+import { IAddressTransaction, getElectrumP2shID } from '../lib/addresses'
 import { ITransaction } from '../lib/transactions'
 
 import ElectrumClient from '../../tmp/electrum-client/main'
 import * as bitcoin from 'bitcoinjs-lib'
 import { EventEmitter } from 'events'
+import RawTransactionStorage from './RawTransactionStorage'
+import Address, { IAddress } from './Address'
 
 // ----------------
 // interfaces
@@ -46,7 +48,12 @@ export default class Account extends EventEmitter implements IAccount {
   private _change: IAddress[]
   private _unusedAddresses: number
 
-  constructor (accountHDNode: bitcoin.HDNode, electrum?: ElectrumClient, options: IAccountOptions = {}) {
+  constructor (
+    accountHDNode: bitcoin.HDNode,
+    rawTransactionStorage: RawTransactionStorage,
+    electrum?: ElectrumClient,
+    options: IAccountOptions = {}) {
+
     super()
     this._initialized = false
     this._electrum = electrum
@@ -71,7 +78,11 @@ export default class Account extends EventEmitter implements IAccount {
 
     const isAddressOwned = (address: string) =>
       this._getAddressLocation(address).index > -1
-    this._transactionStorage = new TransactionStorage(this._network, retrieveTransactionHex, isAddressOwned)
+    this._transactionStorage = new TransactionStorage(
+      this._network,
+      rawTransactionStorage,
+      retrieveTransactionHex,
+      isAddressOwned)
 
     // subscribe to address notifications
     if (this._electrum) {
@@ -83,22 +94,18 @@ export default class Account extends EventEmitter implements IAccount {
   // ----------------
   // electrum calls
 
-  private _getElectrumID (addressID: string): string {
-    return getElectrumP2shID(addressID, this._network)
-  }
-
-  private async _electrumScripthashMethod (method: string, addressID: string, defaultValue: any): Promise<any> {
+  private async _electrumScripthashMethod (method: string, address: IAddress, defaultValue: any): Promise<any> {
     return this._electrum
-      ? this._electrum.methods[`blockchain_scripthash_${method}`](this._getElectrumID(addressID))
+      ? this._electrum.methods[`blockchain_scripthash_${method}`](address.electrumID)
       : defaultValue
   }
 
-  private async _electrumSubscribe (addressID: string): Promise<string> {
-    return this._electrumScripthashMethod('subscribe', addressID, '')
+  private async _electrumSubscribe (address: IAddress): Promise<string> {
+    return this._electrumScripthashMethod('subscribe', address, '')
   }
 
-  private async _electrumGetHistory (addressID: string): Promise<IAddressTransaction[]> {
-    return this._electrumScripthashMethod('getHistory', addressID, [])
+  private async _electrumGetHistory (address: IAddress): Promise<IAddressTransaction[]> {
+    return this._electrumScripthashMethod('getHistory', address, [])
   }
 
   // ----------------
@@ -154,10 +161,10 @@ export default class Account extends EventEmitter implements IAccount {
     // if already subscribed, no need to pull history
     if (address.subscribed) return address
 
-    const status = await this._electrumSubscribe(address.id)
+    const status = await this._electrumSubscribe(address)
     address.subscribed = true
 
-    if (address.status !== status) Object.assign(address, await this._fetchAddressHistoryAndStatus(address.id))
+    if (address.status !== status) Object.assign(address, await this._fetchAddressHistoryAndStatus(address))
 
     if (address.history.length === 0 && address.type === 'external') this._unusedAddresses++
 
@@ -174,9 +181,7 @@ export default class Account extends EventEmitter implements IAccount {
     const address: IAddress = this[typeProp][index]
     const wasUnused = address.history.length === 0
 
-    await this._fetchAddressHistoryAndStatus(address.id)
-
-    Object.assign(address, await this._fetchAddressHistoryAndStatus(address.id))
+    Object.assign(address, await this._fetchAddressHistoryAndStatus(address))
 
     const isUsedNow = address.history.length !== 0
 
@@ -200,7 +205,7 @@ export default class Account extends EventEmitter implements IAccount {
     const typeProp = `_${type}`
     const length = this[typeProp].length
     const newAddresses = new Array(amount).fill(0).map((value, index) =>
-      toBIP49Address(this._deriveHDNode(type, index + length), this._network, type))
+      new Address(this._deriveHDNode(type, index + length), this._network, type))
 
     this[typeProp] = this[typeProp].concat(newAddresses)
   }
@@ -256,11 +261,11 @@ export default class Account extends EventEmitter implements IAccount {
   // ----------------
   // data retrieval
 
-  private async _fetchAddressHistoryAndStatus (addressID: string): Promise<IHistoryAndStatus> {
+  private async _fetchAddressHistoryAndStatus (address: IAddress): Promise<IHistoryAndStatus> {
     // retrieves history for an address (does not mutate local record)
     // then retrieves and stores all transactions' data
 
-    const history: IAddressTransaction[] = await this._electrumGetHistory(addressID)
+    const history: IAddressTransaction[] = await this._electrumGetHistory(address)
     const status: string | null = this._computeAddressStatus(history)
 
     await Promise.map(history,

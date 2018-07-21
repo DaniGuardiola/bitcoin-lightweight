@@ -29,7 +29,7 @@ const run = async () => {
 
   await wallet.ready()
 
-  // console.log(wallet.getTransactions())
+  console.log(wallet.getTransactions().find(x => x.hash === 'd7617db9c2e5957a3a7cf82310d051590259f12619c5a4ef21ff6b00c594af32'))
   // console.log(wallet.getTransactions().map(x => x.height))
 
   // console.log(wallet._bip32Wallet.mainAccount._external.map(x => `${x.id}, history: ${!!x.history.length}`))

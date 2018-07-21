@@ -11,6 +11,7 @@ export type TIsAddressOwned = (address: string) => boolean
 /** BitcoinJS input (In) that includes 'originalOutput' being spent */
 interface IExtendedIn extends bitcoin.In {
   originalOutput: bitcoin.Out
+  txHash: string
 }
 
 /** All data that needs to be retrieved to parse a transaction */
@@ -28,6 +29,7 @@ interface IInputData {
   inputBalance: number
   inputOwnedBalance: number
   allInputOwned: boolean
+  ins: ITransactionIODetailsInput[]
 }
 
 /** Output transaction data related to a wallet */
@@ -35,10 +37,32 @@ interface IOutputData {
   outputExternalAddresses: string[]
   outputBalance: number
   outputOwnedBalance: number
+  outs: ITransactionIODetailsOutput[]
+}
+
+interface ITransactionIODetailsInput {
+  amount: number
+  script: string
+  scriptSig: string
+  scriptType: string
+  transaction: string
+  outputIndex: number
+  sequence: number
+}
+
+interface ITransactionIODetailsOutput {
+  amount: number
+  script: string
+  scriptType: string
+}
+
+interface ITransactionIODetails {
+  in: ITransactionIODetailsInput[]
+  out: ITransactionIODetailsOutput[]
 }
 
 /** Transaction data computed from the input and output and wallet information */
-interface ITransactionIO {
+interface ITransactionIO extends ITransactionIODetails {
   direction: 'in' | 'out'
   peers: string[]
   total: number
@@ -56,6 +80,7 @@ export interface ITransaction extends ITransactionIO {
 /** Hex of a transaction and its bitcoinjs instance */
 export interface IRawTransaction {
   hex: string
+  // TODO: height
   transaction: bitcoin.Transaction
 }
 
@@ -91,12 +116,23 @@ export function parseInputs (inputs: IExtendedIn[], isAddressOwned: TIsAddressOw
   const inputExternalAddresses: string[] = []
   let inputBalance = 0
   let inputOwnedBalance = 0
+  const ins: ITransactionIODetailsInput[] = []
 
   inputs.forEach(input => {
     const address = bitcoin.address.fromOutputScript(input.originalOutput.script, network)
     if (isAddressOwned(address)) inputOwnedBalance += input.originalOutput.value
     else inputExternalAddresses.push(address)
     inputBalance += input.originalOutput.value
+
+    ins.push({
+      amount: input.originalOutput.value,
+      script: bitcoin.script.toASM(input.originalOutput.script),
+      scriptSig: bitcoin.script.toASM(input.script),
+      scriptType: bitcoin.script.classifyOutput(input.originalOutput.script),
+      transaction: input.txHash,
+      outputIndex: input.index,
+      sequence: input.sequence
+    })
   })
 
   const allInputOwned = inputBalance === inputOwnedBalance
@@ -105,7 +141,8 @@ export function parseInputs (inputs: IExtendedIn[], isAddressOwned: TIsAddressOw
     inputExternalAddresses,
     inputBalance,
     inputOwnedBalance,
-    allInputOwned
+    allInputOwned,
+    ins
   }
 }
 
@@ -120,18 +157,26 @@ export function parseOutputs (outputs: bitcoin.Out[], isAddressOwned: TIsAddress
   const outputExternalAddresses: string[] = []
   let outputBalance = 0
   let outputOwnedBalance = 0
+  const outs: ITransactionIODetailsOutput[] = []
 
   outputs.forEach(output => {
     const address = bitcoin.address.fromOutputScript(output.script, network)
     if (isAddressOwned(address)) outputOwnedBalance += output.value
     else outputExternalAddresses.push(address)
     outputBalance += output.value
+
+    outs.push({
+      amount: output.value,
+      script: bitcoin.script.toASM(output.script),
+      scriptType: bitcoin.script.classifyOutput(output.script)
+    })
   })
 
   return {
     outputExternalAddresses,
     outputBalance,
-    outputOwnedBalance
+    outputOwnedBalance,
+    outs
   }
 }
 
@@ -146,13 +191,15 @@ export function parseTransactionIO (inputData: IInputData, outputData: IOutputDa
     inputExternalAddresses,
     inputBalance,
     inputOwnedBalance,
-    allInputOwned
+    allInputOwned,
+    ins
   } = inputData
 
   const {
     outputExternalAddresses,
     outputBalance,
-    outputOwnedBalance
+    outputOwnedBalance,
+    outs
   } = outputData
 
   const change = outputOwnedBalance - inputOwnedBalance
@@ -189,7 +236,9 @@ export function parseTransactionIO (inputData: IInputData, outputData: IOutputDa
     total,
     amount,
     fee,
-    feePaidByWallet
+    feePaidByWallet,
+    in: ins,
+    out: outs
   }
 }
 
@@ -247,11 +296,12 @@ export async function retrieveTransactionData (hash: string, height: number, raw
   const { transaction: { ins: originalIns, outs } } = rawTransaction
 
   const ins = await Promise.map(originalIns, async (input: bitcoin.In): Promise<IExtendedIn> => {
+    const txHash = input.hash.toString('hex')
     const inputScriptCopy = Buffer.alloc(input.hash.length)
     input.hash.copy(inputScriptCopy)
     const hash = Buffer.from(inputScriptCopy.reverse()).toString('hex')
     const { transaction: originalTx } = await retrieveRawTransaction(hash)
-    return Object.assign({}, input, { originalOutput: originalTx.outs[input.index] })
+    return Object.assign({}, input, { originalOutput: originalTx.outs[input.index], txHash })
   })
 
   return {

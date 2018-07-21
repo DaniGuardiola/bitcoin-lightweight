@@ -77,6 +77,9 @@ function transformFactor (amount: IAmount, targetFactor: Big): number {
   return +amount.n.times(factor).toPrecision()
 }
 
+// use it like:
+// convert(5, 'bitcoin').to('mbtc')
+
 export function convert (n: number, unit: string): {
   to: (targetUnit: string) => number
   toFactor: (targetFactor: number) => number
