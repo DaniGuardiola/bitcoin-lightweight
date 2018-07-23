@@ -1,4 +1,6 @@
-const Wallet = require('.').default
+// const Wallet = require('.').default
+const { Wallet } = require('.')
+console.log(Wallet)
 
 const seed = 'attend ordinary entire myth leg utility flat jacket trade smart despair clerk'
 
@@ -28,8 +30,11 @@ const run = async () => {
   */
 
   await wallet.ready()
+  console.log(Object.keys(wallet))
+  console.log(wallet._bip32Wallet.mainAccount._external.map(x => x.id))
+  console.log(wallet._bip32Wallet.mainAccount._change.map(x => x.id))
 
-  console.log(wallet.getTransactions().find(x => x.hash === 'd7617db9c2e5957a3a7cf82310d051590259f12619c5a4ef21ff6b00c594af32'))
+  // console.log(wallet.getTransactions().find(x => x.hash === 'd7617db9c2e5957a3a7cf82310d051590259f12619c5a4ef21ff6b00c594af32'))
   // console.log(wallet.getTransactions().map(x => x.height))
 
   // console.log(wallet._bip32Wallet.mainAccount._external.map(x => `${x.id}, history: ${!!x.history.length}`))
@@ -53,7 +58,6 @@ const run = async () => {
 
   /*
   const {type, index} = wallet._getAddressLocationFromId('mq7CETgVeRkrh7GtSvMZVWbbo3ANBnk9mM')
-  console.log(wallet._addresses[type][index])
   console.log(wallet._addresses.external.map(x => x.id))
   console.log(wallet._transactions['2b12eaac53c3ea9be3349ac57e89c31e4f20656afb0a2972b09bf8a2229b7a56'])
   */

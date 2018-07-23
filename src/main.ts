@@ -6,7 +6,7 @@ import BIP32Wallet from './module/BIP32Wallet'
 
 import * as Joi from 'joi'
 import * as bitcoin from 'bitcoinjs-lib'
-import ElectrumClient from '../tmp/electrum-client/main'
+import ElectrumClient from './tmp/electrum-client/main'
 
 // setup bluebird promises
 import * as _bluebirdPromise from 'bluebird'
@@ -34,7 +34,7 @@ interface IWallet {
 /**
  *  A lightweight bitcoin wallet
  */
-export default class Wallet extends EventEmitter implements IWallet {
+export class Wallet extends EventEmitter implements IWallet {
   private _test: any
   private _initialized: boolean
   private _initializationPromise: Promise<void>

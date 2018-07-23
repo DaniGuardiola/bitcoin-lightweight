@@ -109,10 +109,24 @@ function uniqStringArray (array: string[]): string[] {
  * Parses the inputs of a transation to return wallet-aware data
  *
  * @param inputs Transaction inputs
- * @param isAddressOwned Methods that checks if a transaction is owned by a wallet
+ * @param isAddressOwned Methods that checks if an address is owned by a wallet
  * @param network Network of the transaction
  */
 export function parseInputs (inputs: IExtendedIn[], isAddressOwned: TIsAddressOwned, network: bitcoin.Network): IInputData {
+  const logInputs: any[] = []
+  inputs.forEach(i => {
+    const logInput = Object.assign({}, i, {
+      hash: i.hash.toString('hex'),
+      script: i.script.toString('hex'),
+      originalOutput: Object.assign({}, i.originalOutput, {
+        script: i.originalOutput.script.toString('hex')
+      })
+    })
+    logInputs.push(logInput)
+  })
+  console.log('\n > INPUTS\n\n')
+  console.log(logInputs)
+
   const inputExternalAddresses: string[] = []
   let inputBalance = 0
   let inputOwnedBalance = 0
@@ -137,6 +151,15 @@ export function parseInputs (inputs: IExtendedIn[], isAddressOwned: TIsAddressOw
 
   const allInputOwned = inputBalance === inputOwnedBalance
 
+  console.log('\n > PARSED RESULT\n\n')
+  console.log({
+    inputExternalAddresses,
+    inputBalance,
+    inputOwnedBalance,
+    allInputOwned,
+    ins
+  })
+
   return {
     inputExternalAddresses,
     inputBalance,
@@ -150,10 +173,25 @@ export function parseInputs (inputs: IExtendedIn[], isAddressOwned: TIsAddressOw
  * Parses the outputs of a transation to return wallet-aware data
  *
  * @param outputs Transaction outputs
- * @param isAddressOwned Method that checks if a transaction is owned by a wallet
+ * @param isAddressOwned Method that checks if an address is owned by a wallet
  * @param network Network of the transaction
  */
 export function parseOutputs (outputs: bitcoin.Out[], isAddressOwned: TIsAddressOwned, network: bitcoin.Network): IOutputData {
+  const logInputs: any[] = []
+  outputs.forEach(o => {
+    const logInput = Object.assign({}, o, {
+      script: o.script.toString('hex')
+      // script: o.script.toString('hex'),
+      // originalOutput: Object.assign({}, o.originalOutput, {
+      //  script: o.originalOutput.script.toString('hex')
+      // })
+    })
+    logInputs.push(logInput)
+  })
+
+  console.log('\n > OUTPUTS\n\n')
+  console.log(logInputs)
+
   const outputExternalAddresses: string[] = []
   let outputBalance = 0
   let outputOwnedBalance = 0
@@ -170,6 +208,14 @@ export function parseOutputs (outputs: bitcoin.Out[], isAddressOwned: TIsAddress
       script: bitcoin.script.toASM(output.script),
       scriptType: bitcoin.script.classifyOutput(output.script)
     })
+  })
+
+  console.log('\n > PARSED RESULT\n\n')
+  console.log({
+    outputExternalAddresses,
+    outputBalance,
+    outputOwnedBalance,
+    outs
   })
 
   return {
@@ -259,11 +305,12 @@ export const parseTransactionHex = (hex: string): IRawTransaction => ({
  * Parses transaction data and returns wallet-aware data
  *
  * @param transactionData Transaction full data
- * @param isAddressOwned Methods that checks if a transaction is owned by a wallet
+ * @param isAddressOwned Methods that checks if an address is owned by a wallet
  */
 export function parseTransaction (transactionData: ITransactionData, isAddressOwned: TIsAddressOwned): ITransaction {
   const { hash, height, network, ins, outs } = transactionData
 
+  console.log('\n\n\n\nTX!!!!:', hash, '\n\n')
   const inputData = parseInputs(ins,
     isAddressOwned,
     network)

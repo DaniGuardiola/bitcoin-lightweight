@@ -2,7 +2,7 @@
   "name": "bitcoin-lightweight",
   "version": "0.0.1",
   "description": "Lightweight Bitcoin electrum wallet module, with BIP44, SPV, events and a friendly high level interface",
-  "main": "dist/main.js",
+  "main": "dist/node/main.js",
   "repository": "git@gitlab.com:altruist-projects/fairwallet-lib.git",
   "author": "Dani Guardiola",
   "license": "MIT",
@@ -27,9 +27,9 @@
     "typescript": "^2.8.0"
   },
   "scripts": {
-    "build-node": "rm -rf dist/node && tsc -p ./",
-    "build-browser": "rm -rf dist/browser && mkdir -p dist/browser && browserify src/main.ts -p [ tsify ] > dist/browser/bundle.js",
-    "build": "npm run build-node -s && npm run build-browser -s",
+    "build-node": "rm -rf dist/node && tsc -p ./ && cp -r src/tmp dist/node/",
+    "build-browser": "npm run build-node -s && rm -rf dist/browser && mkdir -p dist/browser && browserify --node dist/node/main.js > dist/browser/bundle.js",
+    "build": "npm run build-browser -s",
     "lint": "tslint",
     "fix": "tslint --fix",
     "test": "nyc --check-coverage --lines 0 mocha",
