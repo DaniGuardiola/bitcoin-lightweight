@@ -1,4 +1,6 @@
 {
     "extends": "tslint-config-standard",
-    "await-promise": [ true, "Bluebird" ]
+    "rules": {
+      "await-promise": [ true, "Bluebird" ]
+    }
 }

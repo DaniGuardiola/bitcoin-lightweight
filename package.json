@@ -17,7 +17,6 @@
     "chai-as-promised": "^7.1.1",
     "mocha": "^5.2.0",
     "npm-check": "^5.7.0",
-    "nsp": "^3.2.1",
     "nyc": "^12.0.2",
     "pre-commit": "^1.2.2",
     "standard": "^11.0.1",
@@ -30,11 +29,10 @@
     "build-node": "rm -rf dist/node && tsc -p ./ && cp -r src/tmp dist/node/",
     "build-browser": "npm run build-node -s && rm -rf dist/browser && mkdir -p dist/browser && browserify --node dist/node/main.js > dist/browser/bundle.js",
     "build": "npm run build-browser -s",
-    "lint": "tslint",
-    "fix": "tslint --fix",
+    "lint": "tslint -p .",
     "test": "nyc --check-coverage --lines 0 mocha",
     "test-watch": "mocha --watch",
-    "check-security": "nsp check",
+    "check-security": "npm audit",
     "check-deps": "npm-check -p",
     "coverage": "nyc check-coverage --lines 90",
     "coverage-report": "nyc report --reporter html --report-dir coverage",
@@ -42,8 +40,9 @@
     "docs": "npm run clean-docs -s && typedoc --out docs src"
   },
   "pre-commit": [
-    "test",
     "lint",
+    "build",
+    "test",
     "clean-docs",
     "check-deps",
     "docs",
@@ -55,9 +54,7 @@
     "bitcoinjs-lib": "^3.3.2",
     "bluebird": "^3.5.1",
     "browserify": "^16.2.2",
-    "electrum-client": "github:DaniGuardiola/node-electrum-client#next_v0.1",
     "joi": "^13.4.0",
-    "satoshi-bitcoin": "^1.0.4",
-    "tsify": "^4.0.0"
+    "jsonrpc-spec": "0.0.3"
   }
 }

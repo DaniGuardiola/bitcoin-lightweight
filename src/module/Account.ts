@@ -1,6 +1,6 @@
-import * as $ from '../settings'
+import * as $ from '../data/settings'
 import TransactionStorage from './TransactionStorage'
-import { IAddressTransaction, getElectrumP2shID } from '../lib/addresses'
+import { IAddressTransaction } from '../lib/addresses'
 import { ITransaction } from '../lib/transactions'
 
 import ElectrumClient from '../tmp/electrum-client/main'
@@ -86,7 +86,7 @@ export default class Account extends EventEmitter implements IAccount {
 
     // subscribe to address notifications
     if (this._electrum) {
-      this._electrum!.events.on('blockchain.scripthash.subscribe',
+      this._electrum.events.on('blockchain.scripthash.subscribe',
         async params => this._updateAddressHistoryById(params[0]))
     }
   }
@@ -236,7 +236,7 @@ export default class Account extends EventEmitter implements IAccount {
     if (this[typeProp].length < gapLimit) {
       nMissingAddresses = gapLimit - this[typeProp].length
     } else {
-      const anyAddressUsed = this[typeProp].slice(initialIndex).reverse().some((address, i) => {
+      this[typeProp].slice(initialIndex).reverse().some((address, i) => {
         if (address.history.length) {
           nMissingAddresses = gapLimit - i
           return true

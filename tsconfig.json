@@ -18,5 +18,6 @@
   ],
   "include": [
     "src/**/*"
-  ]
+  ],
+  "await-promise": [true, "Bluebird"]
 }

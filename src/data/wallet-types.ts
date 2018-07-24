@@ -25,12 +25,12 @@ const BTC: ICoin = {
 
 const BIP39_SEED_SCHEMA = Joi.string().bip39()
 
+// bitcoin electrum BIP39 (mnemonic word-list string for Hierarchical Deterministic Keys generation)
 const BITCOIN_ELECTRUM_BIP39: IWalletType = Object.assign({}, BTC, {
   secretType: 'BIP39',
 
-  // secret can be in two formats:
-  // - string: '<bip39 seed>'
-  // - object: { seed: '<bip39 seed>', passphrase: '<hd key passphrase>' (optional) }
+  // secret format
+  // object: { seed: '<bip39 seed>', passphrase: '<hd key passphrase>' (optional) }
 
   secretSchema: Joi.object({
     seed: BIP39_SEED_SCHEMA.required(),
@@ -44,8 +44,6 @@ const BITCOIN_ELECTRUM_BIP32: IWalletType = Object.assign({}, BTC, {
     seed: Joi.string().hdPrivateKey().required()
   })
 })
-
-// bitcoin electrum BIP39 (mnemonic word-list string for Hierarchical Deterministic Keys generation)
 
 export const WALLET_TYPES = {
   BITCOIN_ELECTRUM_BIP39,

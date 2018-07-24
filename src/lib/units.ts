@@ -1,93 +1,85 @@
+import { UNITS } from '../data/units'
+
 import { Big } from 'big.js'
 
 // decimal places should be more than enough to correctly
 // show a millisatoshi amount in MBTC unit
 Big.DP = 20
 
-interface IAmount {
-  n: Big
+interface IAmountRaw {
+  _bigN: Big
   unit: string
+  value: number
 }
 
-const UNIT_FACTORS = { // where 1 = 1 btc
-  millisatoshi: 1e3,
-  satoshi: 1e8,
-  finney: 1e7,
-  micro: 1e6,
-  milli: 1e3,
-  centi: 1e2,
-  deci: 10,
-  coin: 1,
-  deca: 0.1,
-  hecto: 1e-2,
-  kilo: 1e-3,
-  mega: 1e-6
-}
-
-const UNIT_ALIASES = {
-  msat: 'millisatoshi',
-  sat: 'satoshi',
-  satoshis: 'satoshi',
-  bit: 'micro',
-  bits: 'micro',
-  μbtc: 'micro',
-  millibit: 'milli',
-  millibits: 'milli',
-  mbtc: 'milli',
-  millie: 'milli',
-  bitcent: 'centi',
-  bitcents: 'centi',
-  cbtc: 'centi',
-  dbtc: 'deci',
-  btc: 'coin',
-  bitcoin: 'coin',
-  bitcoins: 'coin',
-  dabtc: 'deca',
-  hbtc: 'hecto',
-  kbtc: 'kilo',
-  MBTC: 'mega'
+export interface IAmount extends IAmountRaw {
+  to: (target: string, unit?: string) => IAmount
 }
 
 function getUnitFactor (unit: string): Big {
-  const capsAlias = UNIT_ALIASES[unit]
-  if (capsAlias) {
-    unit = capsAlias
-  } else {
-    const alias = UNIT_ALIASES[unit.toLowerCase()]
-    if (alias) unit = alias
-  }
+  // check raw (with caps)
+  const rawUnit: number | undefined = UNITS[unit]
+  if (rawUnit) return new Big(rawUnit)
 
-  const factor: number = UNIT_FACTORS[unit.toLowerCase()]
-  if (!factor) throw new Error(`Unknown unit '${unit}'`)
-  return new Big(factor)
+  // check lowercase
+  const lowercaseUnit: number = UNITS[unit.toLowerCase()]
+  if (!lowercaseUnit) throw new Error(`Unknown unit '${unit}'`)
+  return new Big(lowercaseUnit)
 }
 
-function transformUnit (amount: IAmount, to: string): number {
+function transformUnit (amount: IAmountRaw, to: string): IAmountRaw {
   const fromFactor = getUnitFactor(amount.unit)
   const toFactor = getUnitFactor(to)
   const factor = toFactor.div(fromFactor)
 
-  return +amount.n.times(factor).toPrecision()
+  const _bigN = amount._bigN.times(factor)
+  const unit = to
+  const value = +_bigN.toPrecision()
+
+  return {
+    _bigN,
+    unit,
+    value
+  }
 }
 
-function transformFactor (amount: IAmount, targetFactor: Big): number {
+function transformFactor (amount: IAmountRaw, targetFactor: Big, unit: string = 'custom'): IAmountRaw {
   const fromFactor = getUnitFactor(amount.unit)
   const factor = targetFactor.div(fromFactor)
 
-  return +amount.n.times(factor).toPrecision()
+  const _bigN = amount._bigN.times(factor)
+  const value = +_bigN.toPrecision()
+
+  return {
+    _bigN,
+    unit,
+    value
+  }
+}
+
+function transform (amount: IAmountRaw, target: string | number | Big, unit?: string): IAmountRaw {
+  if (target instanceof Big) return transformFactor(amount, target, unit)
+  if (typeof target === 'number') return transformFactor(amount, new Big(target), unit)
+  return transformUnit(amount, target)
+}
+
+function buildAmount (amount: IAmountRaw) {
+  return Object.assign({}, amount, {
+    to: (target, unit) => buildAmount(transform(amount, target, unit)),
+    toNumber: target => transform(amount, target).value
+  })
 }
 
 // use it like:
 // convert(5, 'bitcoin').to('mbtc')
 
-export function convert (n: number, unit: string): {
-  to: (targetUnit: string) => number
-  toFactor: (targetFactor: number) => number
-} {
+export function convert (n: number, unit: string): IAmount {
 
-  const amount = { n: new Big(n), unit }
-  return {
-    to: targetUnit => transformUnit(amount, targetUnit),
-    toFactor: targetFactor => transformFactor(amount, new Big(targetFactor))
+  const amount: IAmountRaw = {
+    _bigN: new Big(n),
+    unit,
+    value: +(new Big(n).toPrecision())
   }
+
+  return buildAmount(amount)
 }

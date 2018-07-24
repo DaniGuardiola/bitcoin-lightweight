@@ -1,18 +1,18 @@
-import * as $ from './settings'
-import { WALLET_TYPES, IWalletType } from './fixtures/wallet-types'
+import * as $ from './data/settings'
+import { WALLET_TYPES, IWalletType } from './data/wallet-types'
 
-import { IBIP32Secret, IBIP39Secret, parseBIP39Secret } from './lib/secret'
+import { parseBIP39Secret } from './lib/secret'
+import { ITransaction } from './lib/transactions'
+import { convert, IAmount } from './lib/units'
 import BIP32Wallet from './module/BIP32Wallet'
 
+import { EventEmitter } from 'events'
 import * as Joi from 'joi'
 import * as bitcoin from 'bitcoinjs-lib'
 import ElectrumClient from './tmp/electrum-client/main'
 
 // setup bluebird promises
 import * as _bluebirdPromise from 'bluebird'
-import { EventEmitter } from 'events'
-import { ITransaction } from './lib/transactions'
-import { convert } from './lib/units'
 global.Promise = _bluebirdPromise
 
 // ----------------
@@ -95,7 +95,9 @@ export class Wallet extends EventEmitter implements IWallet {
     const bip32CoinId = this._type.BIP32CoinIDs[this._networkName] // get BIP32 coin id
     this._bip32Wallet = new BIP32Wallet(bip32Seed, this._network, bip32CoinId, this._electrum)
     this._initializationPromise = this._initializeWallet() // initialize wallet and store its promise
-    this._initializationPromise.then(() => this.emit('ready')) // emit the 'ready' event
+    this._initializationPromise
+      .then(() => this.emit('ready')) // emit the 'ready' event
+      .catch(error => { throw error })
   }
 
   private _saveTestOptions (options): void {
@@ -124,13 +126,19 @@ export class Wallet extends EventEmitter implements IWallet {
   // ----------------
   // public interface
 
-  public static convert (n: number, unit: string) {
+  // utils
+
+  public static convert (n: number, unit: string): IAmount {
     return convert(n, unit)
   }
+
+  // lifecycle
 
   public async ready (): Promise<void> {
     if (!this._initialized) return this._initializationPromise
   }
+
+  // data getters
 
   public getTransactions (): ITransaction[] {
     this._ensureInitialized()

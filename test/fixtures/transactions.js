@@ -94,7 +94,8 @@ const inputs = {
       txHash: 'ecd081867eaa667607ab3b6dd5fc1c897517acb3b2e32fd633dece96dae6eaef'
     }],
 
-    output: { inputExternalAddresses: [ 'mxAGUxWUwiwp8YBp2fdF6NP7EM46h82UM2' ],
+    output: {
+      inputExternalAddresses: [ 'mxAGUxWUwiwp8YBp2fdF6NP7EM46h82UM2' ],
       inputBalance: 48979975,
       inputOwnedBalance: 0,
       allInputOwned: false,

@@ -1,4 +1,4 @@
-import * as $ from '../settings'
+import * as $ from '../data/settings'
 
 import { IAddressTransaction, getElectrumP2shID, hdNodeToBIP49Address } from '../lib/addresses'
 

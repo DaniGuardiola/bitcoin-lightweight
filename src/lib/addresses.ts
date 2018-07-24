@@ -1,4 +1,4 @@
-import * as $ from '../settings'
+import * as $ from '../data/settings'
 
 import * as bitcoin from 'bitcoinjs-lib'
 
