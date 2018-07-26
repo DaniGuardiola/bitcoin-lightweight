@@ -2,6 +2,12 @@
 
 A friendly lightweight Bitcoin wallet written in typescript
 
+# Status
+
+*IMPORTANT: DO NOT USE IN PRODUCTION*
+
+This module is a work in progress and is still lacking many features and unit/integration tests. An alpha version will be released soon.
+
 # Features
 
 -   BIP49 key derivation, with external and change addresses
