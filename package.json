@@ -1,7 +1,7 @@
 {
   "name": "bitcoin-lightweight",
   "version": "0.0.1",
-  "description": "Lightweight Bitcoin electrum wallet module, with BIP44, SPV, events and a friendly high level interface",
+  "description": "Lightweight Bitcoin electrum wallet module, with BIP49, SPV, events and a friendly high level interface",
   "main": "dist/node/main.js",
   "repository": "git@gitlab.com:altruist-projects/fairwallet-lib.git",
   "author": "Dani Guardiola",
