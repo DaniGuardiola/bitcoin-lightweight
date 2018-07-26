@@ -1,6 +1,7 @@
 {
     "extends": "tslint-config-standard",
     "rules": {
+      "no-unused-variable": false,
       "await-promise": [ true, "Bluebird" ]
     }
 }
