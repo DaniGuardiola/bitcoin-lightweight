@@ -14,22 +14,11 @@ describe('addresses', () => {
   describe('hdNodeToBIP49Address', () => {
     const fixtures = FIXTURES.hdNodeToBIP49Address
     const network = FIXTURES.NETWORK
-
-    describe('pass', () => {
-      fixtures.pass.forEach(fixture => {
-        it(shorten(fixture.xpriv, 35), () => {
-          const { input, output } = fixture
-          const result = addresses.hdNodeToBIP49Address(input, network)
-          output.should.equal(result)
-        })
-      })
-    })
-
-    describe('fail', () => {
-      fixtures.fail.forEach(fixture => {
-        it(shorten(fixture.toString(), 35), () => {
-          (() => addresses.hdNodeToBIP49Address(fixture, network)).should.throw()
-        })
+    fixtures.pass.forEach(fixture => {
+      it(shorten(fixture.xpriv, 35), () => {
+        const { input, output } = fixture
+        const result = addresses.hdNodeToBIP49Address(input, network)
+        output.should.equal(result)
       })
     })
   })
@@ -37,22 +26,11 @@ describe('addresses', () => {
   describe('publicKeyToBIP49Address', () => {
     const fixtures = FIXTURES.publicKeyToBIP49Address
     const network = FIXTURES.NETWORK
-
-    describe('pass', () => {
-      fixtures.pass.forEach(fixture => {
-        it(shorten(fixture.pub, 35), () => {
-          const { input, output } = fixture
-          const result = addresses.publicKeyToBIP49Address(input, network)
-          output.should.equal(result)
-        })
-      })
-    })
-
-    describe('fail', () => {
-      fixtures.fail.forEach(fixture => {
-        it(shorten(fixture.toString(), 35), () => {
-          (() => addresses.publicKeyToBIP49Address(fixture, network)).should.throw()
-        })
+    fixtures.pass.forEach(fixture => {
+      it(shorten(fixture.pub, 35), () => {
+        const { input, output } = fixture
+        const result = addresses.publicKeyToBIP49Address(input, network)
+        output.should.equal(result)
       })
     })
   })
@@ -60,14 +38,11 @@ describe('addresses', () => {
   describe('addressToElectrumP2shID', () => {
     const fixtures = FIXTURES.addressToElectrumP2shID
     const network = FIXTURES.NETWORK
-
-    describe('pass', () => {
-      fixtures.pass.forEach(fixture => {
-        it(fixture.input, () => {
-          const { input, output } = fixture
-          const result = addresses.addressToElectrumP2shID(input, network)
-          output.should.equal(result)
-        })
+    fixtures.pass.forEach(fixture => {
+      it(fixture.input, () => {
+        const { input, output } = fixture
+        const result = addresses.addressToElectrumP2shID(input, network)
+        output.should.equal(result)
       })
     })
 

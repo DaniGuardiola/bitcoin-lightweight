@@ -27,14 +27,7 @@ const hdNodeToBIP49Address = {
   }, {
     xpriv: 'xprv9s21ZrQH143K3ZvNZMNLMAPJHh1M1HfKLiWGPCtGAzXVxiSxAh9XddyT2G1bXZdggcXn1dK9YAb1fqa8h98i9gxTi4VPzPLwaRrjULuPWwk',
     output: '38JkjjGEqJYTgHAYXTgqwgZyKGGcSNhtP3'
-  }],
-  fail: [
-    'stringformat',
-    'xprv9s21ZrQH143K3ZvNZMNLMAPJHh1M1HfKLiWGPCtGAzXVxiSxAh9XddyT2G1bXZdggcXn1dK9YAb1fqa8h98i9gxTi4VPzPLwaRrjULuPWwk',
-    12341234,
-    { a: 4, b: 3 },
-    [ 1, 2, 3 ]
-  ]
+  }]
 }
 
 hdNodeToBIP49Address.pass.map(item => {
@@ -66,14 +59,7 @@ const publicKeyToBIP49Address = {
   }, {
     pub: '026b7267bfa8bd7565f60f05fe1cef6055eade1f0a42fa51ad8e309f1e8c1f78e2',
     output: '38JkjjGEqJYTgHAYXTgqwgZyKGGcSNhtP3'
-  }],
-  fail: [
-    'stringformat',
-    '023e4740d0ba639e28963f3476157b7cf2fb7c6fdf4254f97099cf8670b505ea59',
-    12341234,
-    { a: 4, b: 3 },
-    [ 1, 2, 3 ]
-  ]
+  }]
 }
 
 publicKeyToBIP49Address.pass.map(item => {
@@ -107,11 +93,16 @@ const addressToElectrumP2shID = {
     output: '313917f056bbd87bead7e49982c2e9bc9156178347ca29d2c61c7e6282e81164'
   }],
   fail: [
-    'stringformat',
-    '023e4740d0ba639e28963f3476157b7cf2fb7c6fdf4254f97099cf8670b505ea59',
-    12341234,
-    { a: 4, b: 3 },
-    [ 1, 2, 3 ]
+    'sample-string',
+    '1fakeaddress1231231231',
+    '3h2j2k2h2k2hj2k2j2k',
+    '1aaaaaaaaaaaaaaaaaaaaaaaaaaa',
+    '12ShAKdAEBYrXwP3Y4WaehXxpgYnERYD75',
+    '1H1Hzcg3orS4wkzhs5hWfSaFcwAGfjZDe6',
+    '1x6YnuBVeeE65dQRZztRWgUPwyBjHCb5g',
+    '38S5zwJPgHHo1ukfCpUJyaETRgQRrZ9jMq',
+    '3AAmHoaMFfZNNXaY7n3fZ2cZZrbZsdpynr',
+    '3P9YzQ9E46FwkdvBddqmtRhdJUPWakYf2R'
   ]
 }
 

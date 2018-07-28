@@ -13,22 +13,11 @@ const shorten = (str, length) =>
 describe('transactions', () => {
   describe('parseTransactionHex', () => {
     const fixtures = FIXTURES.hexToTransaction
-
-    describe('pass', () => {
-      fixtures.pass.forEach(fixture => {
-        it(shorten(fixture.input.toString(), 35), () => {
-          const { input, output } = fixture
-          const result = tx.parseTransactionHex(input)
-          output.should.deep.equal(result)
-        })
-      })
-    })
-
-    describe('fail', () => {
-      fixtures.fail.forEach(fixture => {
-        it(shorten(fixture.toString(), 35), () => {
-          (() => tx.parseTransactionHex(fixture)).should.throw()
-        })
+    fixtures.pass.forEach(fixture => {
+      it(shorten(fixture.input.toString(), 35), () => {
+        const { input, output } = fixture
+        const result = tx.parseTransactionHex(input)
+        output.should.deep.equal(result)
       })
     })
   })
@@ -38,17 +27,14 @@ describe('transactions', () => {
     const fixtures = FIXTURES.inputs
     const isAddressOwned = FIXTURES.isAddressOwned
     const network = FIXTURES.NETWORK
-
-    describe('pass', () => {
-      fixtures.pass.forEach(fixture => {
-        it(`tx: ${fixture.txHash}`, () => {
-          const { input, output } = fixture
-          const result = tx.parseInputs(
-            input,
-            isAddressOwned,
-            network)
-          output.should.deep.equal(result)
-        })
+    fixtures.pass.forEach(fixture => {
+      it(shorten(fixture.txHash, 35), () => {
+        const { input, output } = fixture
+        const result = tx.parseInputs(
+          input,
+          isAddressOwned,
+          network)
+        output.should.deep.equal(result)
       })
     })
   })
@@ -58,31 +44,25 @@ describe('transactions', () => {
     const fixtures = FIXTURES.outputs
     const isAddressOwned = FIXTURES.isAddressOwned
     const network = FIXTURES.NETWORK
-
-    describe('pass', () => {
-      fixtures.pass.forEach(fixture => {
-        it(`tx: ${fixture.txHash}`, () => {
-          const { input, output } = fixture
-          const result = tx.parseOutputs(
-            input,
-            isAddressOwned,
-            network)
-          output.should.deep.equal(result)
-        })
+    fixtures.pass.forEach(fixture => {
+      it(shorten(fixture.txHash, 35), () => {
+        const { input, output } = fixture
+        const result = tx.parseOutputs(
+          input,
+          isAddressOwned,
+          network)
+        output.should.deep.equal(result)
       })
     })
   })
 
   describe('parseTransactionIO', () => {
     const fixtures = FIXTURES.parseTransactionIO
-
-    describe('pass', () => {
-      fixtures.pass.forEach(fixture => {
-        it(shorten(fixture.hash, 35), () => {
-          const { input: { inputData, outputData }, output } = fixture
-          const result = tx.parseTransactionIO(inputData, outputData)
-          output.should.deep.equal(result)
-        })
+    fixtures.pass.forEach(fixture => {
+      it(shorten(fixture.hash, 35), () => {
+        const { input: { inputData, outputData }, output } = fixture
+        const result = tx.parseTransactionIO(inputData, outputData)
+        output.should.deep.equal(result)
       })
     })
   }) // TODO
