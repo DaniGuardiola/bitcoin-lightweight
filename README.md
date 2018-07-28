@@ -43,7 +43,6 @@ const app = async () {
   await wallet.ready()                          // wait for 100% load (all data downloaded, parsed and processed)
 
   const bitcoinBalance = wallet.getBalance()    // obtain wallet balance in bitcoin
-  console.log()
 
   const euroBalance = wallet.getBalance()       // obtain balance in euro
   const txs = wallet.getTransactions()          // obtain transactions

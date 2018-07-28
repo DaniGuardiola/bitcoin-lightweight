@@ -29,7 +29,7 @@ interface IInputData {
   inputBalance: number
   inputOwnedBalance: number
   allInputOwned: boolean
-  ins: ITransactionIODetailsInput[]
+  ins: IInputDetails[]
 }
 
 /** Output transaction data related to a wallet */
@@ -37,43 +37,61 @@ interface IOutputData {
   outputExternalAddresses: string[]
   outputBalance: number
   outputOwnedBalance: number
-  outs: ITransactionIODetailsOutput[]
+  outs: IOutputDetails[]
 }
 
-interface ITransactionIODetailsInput {
+export interface IInputDetails {
+  /** Amount of the referenced unspent output */
   amount: number
+  /** Locking script from the referenced unspent output */
   script: string
+  /** Unlocking script */
   scriptSig: string
+  // TODO: use list of strings instead
+  /** Type of script */
   scriptType: string
+  /** Referenced transaction hash */
   transaction: string
+  /** Index of the referenced outputin the transaction */
   outputIndex: number
+  /** Input sequence parameter */
   sequence: number
 }
 
-interface ITransactionIODetailsOutput {
+export interface IOutputDetails {
   amount: number
   script: string
   scriptType: string
 }
 
 interface ITransactionIODetails {
-  in: ITransactionIODetailsInput[]
-  out: ITransactionIODetailsOutput[]
+  /** Detailed input data */
+  in: IInputDetails[]
+  /** Detailed output data */
+  out: IOutputDetails[]
 }
 
 /** Transaction data computed from the input and output and wallet information */
 interface ITransactionIO extends ITransactionIODetails {
+  /** Direction of the transaction */
   direction: 'in' | 'out'
+  /** List of transaction peers */
   peers: string[]
+  /** Total amount transacted */
   total: number
+  /** Amount transacted in relation to the wallet */
   amount: number
+  /** Fee paid to the miner in the transaction */
   fee: number
+  /** Whether the fee has been paid by the wallet */
   feePaidByWallet: boolean
 }
 
 /** Complete transaction data */
 export interface ITransaction extends ITransactionIO {
+  /** hash of the transaction */
   hash: string
+  /** height of the block in which the transaction is included */
   height: number
 }
 
@@ -116,7 +134,7 @@ export function parseInputs (inputs: IExtendedIn[], isAddressOwned: TIsAddressOw
   const inputExternalAddresses: string[] = []
   let inputBalance = 0
   let inputOwnedBalance = 0
-  const ins: ITransactionIODetailsInput[] = []
+  const ins: IInputDetails[] = []
 
   inputs.forEach(input => {
     const address = bitcoin.address.fromOutputScript(input.originalOutput.script, network)
@@ -157,7 +175,7 @@ export function parseOutputs (outputs: bitcoin.Out[], isAddressOwned: TIsAddress
   const outputExternalAddresses: string[] = []
   let outputBalance = 0
   let outputOwnedBalance = 0
-  const outs: ITransactionIODetailsOutput[] = []
+  const outs: IOutputDetails[] = []
 
   outputs.forEach(output => {
     const address = bitcoin.address.fromOutputScript(output.script, network)

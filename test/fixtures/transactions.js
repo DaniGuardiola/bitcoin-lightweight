@@ -5,10 +5,10 @@ const bitcoin = require('bitcoinjs-lib')
 // ----------------
 // constants and utils
 
-// all addresses have been generated in testnet with this bip39 phrase:
-// attend ordinary entire myth leg utility flat jacket trade smart despair clerk
 const NETWORK = bitcoin.networks.testnet
 
+// all addresses have been generated in testnet with this bip39 phrase:
+// attend ordinary entire myth leg utility flat jacket trade smart despair clerk
 const WALLET_ADDRESSES = [
   '2N89cVE71RAK2fzW63D57JE6k2gEWGvqBMu',
   '2NGZN8n6UCnkhtxgQFioGKUnyVaz8Gayq1v',
@@ -204,10 +204,385 @@ outputs.pass.forEach(item => item.input.map(txInput => {
   txInput.script = Buffer.from(txInput.script, 'hex')
 }))
 
+const parseTransactionIO = {
+  pass: [{
+    hash: 'a6a65b8f577c5f9f9b7e27914fba598fa1cae89e17a37e67727d6b21346858de',
+
+    input: {
+      inputData: {
+        inputExternalAddresses: [ 'mxAGUxWUwiwp8YBp2fdF6NP7EM46h82UM2' ],
+        inputBalance: 48979975,
+        inputOwnedBalance: 0,
+        allInputOwned: false,
+        ins: [{
+          amount: 48979975,
+          script: 'OP_DUP OP_HASH160 b69095f0926b50308abd042951af0eb8ff42f405 OP_EQUALVERIFY OP_CHECKSIG',
+          scriptSig: '3045022100a3c73257ab0ed5adbbe530537a5db21b57756cde1c9bbb449faf382c8567a93e022069ffb5324783ed2bffdfedd008c8dac3d395f51db889457b135195db905f859b01 02eab2aeea2810b546111a29007e1cc75935228f52c63dbd6ccdeaa0f3129d7c1c',
+          scriptType: 'pubkeyhash',
+          transaction: 'ecd081867eaa667607ab3b6dd5fc1c897517acb3b2e32fd633dece96dae6eaef',
+          outputIndex: 1,
+          sequence: 4294967295
+        }]
+      },
+      outputData: {
+        outputExternalAddresses: [ 'miT9f6gsBYd2gaGjb34X8VJBRF8n8vhyuj' ],
+        outputBalance: 48960535,
+        outputOwnedBalance: 50000,
+        outs: [{
+          amount: 50000,
+          script: 'OP_HASH160 11f76f9e3ac76076a11e3da93a0e114bcf87054e OP_EQUAL',
+          scriptType: 'scripthash' }, {
+          amount: 48910535,
+          script: 'OP_DUP OP_HASH160 203032dfca01bae143e011f26cdd6091822e0bcd OP_EQUALVERIFY OP_CHECKSIG',
+          scriptType: 'pubkeyhash'
+        }]
+      }
+    },
+
+    output: { direction: 'in',
+      peers: [ 'mxAGUxWUwiwp8YBp2fdF6NP7EM46h82UM2' ],
+      total: 50000,
+      amount: 50000,
+      fee: 19440,
+      feePaidByWallet: false,
+      in: [{
+        amount: 48979975,
+        script: 'OP_DUP OP_HASH160 b69095f0926b50308abd042951af0eb8ff42f405 OP_EQUALVERIFY OP_CHECKSIG',
+        scriptSig: '3045022100a3c73257ab0ed5adbbe530537a5db21b57756cde1c9bbb449faf382c8567a93e022069ffb5324783ed2bffdfedd008c8dac3d395f51db889457b135195db905f859b01 02eab2aeea2810b546111a29007e1cc75935228f52c63dbd6ccdeaa0f3129d7c1c',
+        scriptType: 'pubkeyhash',
+        transaction: 'ecd081867eaa667607ab3b6dd5fc1c897517acb3b2e32fd633dece96dae6eaef',
+        outputIndex: 1,
+        sequence: 4294967295 } ],
+      out: [{
+        amount: 50000,
+        script: 'OP_HASH160 11f76f9e3ac76076a11e3da93a0e114bcf87054e OP_EQUAL',
+        scriptType: 'scripthash' }, {
+        amount: 48910535,
+        script: 'OP_DUP OP_HASH160 203032dfca01bae143e011f26cdd6091822e0bcd OP_EQUALVERIFY OP_CHECKSIG',
+        scriptType: 'pubkeyhash'
+      }]
+    }
+  }, {
+    hash: '902e49e18796e2eff3f3948060cbe089cb2e4055c44af2baad21632bfb01dd70',
+
+    input: {
+      inputData: {
+        inputExternalAddresses: [ 'mhBHPaBqohpvX2kAyDY9JzT8CSGiayuZyS' ],
+        inputBalance: 2505750573,
+        inputOwnedBalance: 0,
+        allInputOwned: false,
+        ins: [{
+          amount: 2505750573,
+          script: 'OP_DUP OP_HASH160 1237df4629b9d28803f2eaddb663111fcef54dee OP_EQUALVERIFY OP_CHECKSIG',
+          scriptSig: '3045022100cd6c55c7157dc2f3656e81561c3762651fcab5377de8864d6da755c0949bdd4202203f940ef011733d9b2dc2e18f171fc9654b3fae485d44ccc0373196d824c5542f01 03ee247e8ed2e581920c82d6041aa1255cfa8d525e0fe35781a665ce27ed8afd8b',
+          scriptType: 'pubkeyhash',
+          transaction: '60251391c1174e3843f5c4561d6860625579a69ddfb0ca1f3190255073f3e15e',
+          outputIndex: 0,
+          sequence: 4294967294
+        }]
+      },
+      outputData: {
+        outputExternalAddresses: [ 'n3L8279JgdDrrVATyRNST5z2n2RoLywgmc' ],
+        outputBalance: 2505638573,
+        outputOwnedBalance: 83823003,
+        outs: [{
+          amount: 83823003,
+          script: 'OP_HASH160 a37a2c166402eeee959d5efd34b6c9ee4f8320e7 OP_EQUAL',
+          scriptType: 'scripthash' }, {
+          amount: 2421815570,
+          script: 'OP_DUP OP_HASH160 ef464f4a0c84ef6e9617872811ae29490c62bb0f OP_EQUALVERIFY OP_CHECKSIG',
+          scriptType: 'pubkeyhash'
+        }]
+      }
+    },
+
+    output: {
+      direction: 'in',
+      peers: [ 'mhBHPaBqohpvX2kAyDY9JzT8CSGiayuZyS' ],
+      total: 83823003,
+      amount: 83823003,
+      fee: 112000,
+      feePaidByWallet: false,
+      in: [{
+        amount: 2505750573,
+        script: 'OP_DUP OP_HASH160 1237df4629b9d28803f2eaddb663111fcef54dee OP_EQUALVERIFY OP_CHECKSIG',
+        scriptSig: '3045022100cd6c55c7157dc2f3656e81561c3762651fcab5377de8864d6da755c0949bdd4202203f940ef011733d9b2dc2e18f171fc9654b3fae485d44ccc0373196d824c5542f01 03ee247e8ed2e581920c82d6041aa1255cfa8d525e0fe35781a665ce27ed8afd8b',
+        scriptType: 'pubkeyhash',
+        transaction: '60251391c1174e3843f5c4561d6860625579a69ddfb0ca1f3190255073f3e15e',
+        outputIndex: 0,
+        sequence: 4294967294 } ],
+      out: [{
+        amount: 83823003,
+        script: 'OP_HASH160 a37a2c166402eeee959d5efd34b6c9ee4f8320e7 OP_EQUAL',
+        scriptType: 'scripthash' }, {
+        amount: 2421815570,
+        script: 'OP_DUP OP_HASH160 ef464f4a0c84ef6e9617872811ae29490c62bb0f OP_EQUALVERIFY OP_CHECKSIG',
+        scriptType: 'pubkeyhash'
+      }]
+    }
+  }, {
+    hash: '3412759e3f39db7866cc6760cba358deca594e727f62ea621f45182b12add54e',
+
+    input: {
+      inputData: {
+        inputExternalAddresses: [
+          '2N3mvjSc3Lg4vGrpk1RSWu76AGrKTV4wd3E',
+          '2N87YQvLvWWnQkMxxPXjUVKJuAoAgDMRZVx' ],
+        inputBalance: 50778658447,
+        inputOwnedBalance: 0,
+        allInputOwned: false,
+        ins: [{
+          amount: 62409139,
+          script: 'OP_HASH160 737fbf8776622c6467d8bf2381a5910db3c3fd49 OP_EQUAL',
+          scriptSig: '001462d5aa424bcb7e4487bad3fbbaf2333264d00e8f',
+          scriptType: 'scripthash',
+          transaction: '6302a966a86622f7c93e0623bee37a7f482562ca81d24ffed9b0f2b126c545f9',
+          outputIndex: 1,
+          sequence: 4294967295
+        }, {
+          amount: 50716249308,
+          script: 'OP_HASH160 a315f074f56ed158d45e2a382ed19cf2d33dcab8 OP_EQUAL',
+          scriptSig: '0014f1b8d08acfb582d0254efee283491b48bd71ea62',
+          scriptType: 'scripthash',
+          transaction: 'c5d5b0618a38d05c785e4a71296e24189da9194780a5b900a74732c7d4449c20',
+          outputIndex: 1,
+          sequence: 4294967295
+        }]
+      },
+      outputData: {
+        outputExternalAddresses: [ '2N6KWi3WREP7Zi8PSJjutvGnp2CUEgUwp7p' ],
+        outputBalance: 50778558447,
+        outputOwnedBalance: 65000000,
+        outs: [{
+          amount: 65000000,
+          script: 'OP_HASH160 a37a2c166402eeee959d5efd34b6c9ee4f8320e7 OP_EQUAL',
+          scriptType: 'scripthash' }, {
+          amount: 50713558447,
+          script: 'OP_HASH160 8f694195b6ed3c66ed2eb90efe6298355a0bb7e7 OP_EQUAL',
+          scriptType: 'scripthash'
+        }]
+      }
+    },
+
+    output: {
+      direction: 'in',
+      peers: [
+        '2N3mvjSc3Lg4vGrpk1RSWu76AGrKTV4wd3E',
+        '2N87YQvLvWWnQkMxxPXjUVKJuAoAgDMRZVx'
+      ],
+      total: 65000000,
+      amount: 65000000,
+      fee: 100000,
+      feePaidByWallet: false,
+      in: [{
+        amount: 62409139,
+        script: 'OP_HASH160 737fbf8776622c6467d8bf2381a5910db3c3fd49 OP_EQUAL',
+        scriptSig: '001462d5aa424bcb7e4487bad3fbbaf2333264d00e8f',
+        scriptType: 'scripthash',
+        transaction: '6302a966a86622f7c93e0623bee37a7f482562ca81d24ffed9b0f2b126c545f9',
+        outputIndex: 1,
+        sequence: 4294967295 }, {
+        amount: 50716249308,
+        script: 'OP_HASH160 a315f074f56ed158d45e2a382ed19cf2d33dcab8 OP_EQUAL',
+        scriptSig: '0014f1b8d08acfb582d0254efee283491b48bd71ea62',
+        scriptType: 'scripthash',
+        transaction: 'c5d5b0618a38d05c785e4a71296e24189da9194780a5b900a74732c7d4449c20',
+        outputIndex: 1,
+        sequence: 4294967295
+      }],
+      out: [{
+        amount: 65000000,
+        script: 'OP_HASH160 a37a2c166402eeee959d5efd34b6c9ee4f8320e7 OP_EQUAL',
+        scriptType: 'scripthash' }, {
+        amount: 50713558447,
+        script: 'OP_HASH160 8f694195b6ed3c66ed2eb90efe6298355a0bb7e7 OP_EQUAL',
+        scriptType: 'scripthash'
+      }]
+    }
+  }, {
+    hash: '5354d0e028c7b452e720be042d4aa7ba04fa1092de84df8b926a0b21cfe3b031',
+
+    input: {
+      inputData: {
+        inputExternalAddresses: [ '2N6PBMNjBR5n6rgGn81ZwxDzsZDp5gAqpR5' ],
+        inputBalance: 115095056,
+        inputOwnedBalance: 0,
+        allInputOwned: false,
+        ins: [{
+          amount: 115095056,
+          script: 'OP_HASH160 901ac31d4f62bb99522dbbf93cc067f04e861df8 OP_EQUAL',
+          scriptSig: '00144425acb0273444e389d764221d484859cb6bbae1',
+          scriptType: 'scripthash',
+          transaction: 'f3ebef153460929874f4185cf6a51035f8b657e7478fd4bb1711b907037b5ba6',
+          outputIndex: 0,
+          sequence: 4294967294
+        }]
+      },
+      outputData: {
+        outputExternalAddresses: [ '2MtYYAJBxm8GYe4R8GdWcHmVebna571ybug' ],
+        outputBalance: 115094890,
+        outputOwnedBalance: 4000000,
+        outs: [{
+          amount: 111094890,
+          script: 'OP_HASH160 0e3e5dec9c81e6d6d301f7f10b1bf4ad53f6b154 OP_EQUAL',
+          scriptType: 'scripthash' }, {
+          amount: 4000000,
+          script: 'OP_HASH160 a37a2c166402eeee959d5efd34b6c9ee4f8320e7 OP_EQUAL',
+          scriptType: 'scripthash'
+        }]
+      }
+    },
+
+    output: {
+      direction: 'in',
+      peers: [ '2N6PBMNjBR5n6rgGn81ZwxDzsZDp5gAqpR5' ],
+      total: 4000000,
+      amount: 4000000,
+      fee: 166,
+      feePaidByWallet: false,
+      in: [{
+        amount: 115095056,
+        script: 'OP_HASH160 901ac31d4f62bb99522dbbf93cc067f04e861df8 OP_EQUAL',
+        scriptSig: '00144425acb0273444e389d764221d484859cb6bbae1',
+        scriptType: 'scripthash',
+        transaction: 'f3ebef153460929874f4185cf6a51035f8b657e7478fd4bb1711b907037b5ba6',
+        outputIndex: 0,
+        sequence: 4294967294
+      }],
+      out: [{
+        amount: 111094890,
+        script: 'OP_HASH160 0e3e5dec9c81e6d6d301f7f10b1bf4ad53f6b154 OP_EQUAL',
+        scriptType: 'scripthash' }, {
+        amount: 4000000,
+        script: 'OP_HASH160 a37a2c166402eeee959d5efd34b6c9ee4f8320e7 OP_EQUAL',
+        scriptType: 'scripthash'
+      }]
+    }
+  }, {
+    hash: 'fff7dc7c41fa567eec37a489c2f4d358649047c24cf4beac19771f239c9fd7f2',
+
+    input: {
+      inputData: {
+        inputExternalAddresses: [ '2N2Gfd8EqVuXt1kmmfd7LHwj8DrFTfLkBxh' ],
+        inputBalance: 51779752264,
+        inputOwnedBalance: 0,
+        allInputOwned: false,
+        ins: [{
+          amount: 51779752264,
+          script: 'OP_HASH160 62fef27bf70f7d1c014459db068b044deef21351 OP_EQUAL',
+          scriptSig: '0014e858f0befcf5519d62d3ac5cc7ff181a29cbc6ab',
+          scriptType: 'scripthash',
+          transaction: '20d3956f6bdecf20a3261ab57a6ccdd4511c224f1f11a2cd8e932072e497ebaa',
+          outputIndex: 1,
+          sequence: 4294967295
+        }]
+      },
+      outputData: { outputExternalAddresses: [ '2MsRgGYvdPbMPRskBLsPsZVc46FQxKL5NMZ' ],
+        outputBalance: 51779652264,
+        outputOwnedBalance: 32500000,
+        outs: [{
+          amount: 32500000,
+          script: 'OP_HASH160 a37a2c166402eeee959d5efd34b6c9ee4f8320e7 OP_EQUAL',
+          scriptType: 'scripthash' }, {
+          amount: 51747152264,
+          script: 'OP_HASH160 01fa18f279af6f4a7e2b4c59fad15e982d257111 OP_EQUAL',
+          scriptType: 'scripthash'
+        }]
+      }
+    },
+
+    output: {
+      direction: 'in',
+      peers: [ '2N2Gfd8EqVuXt1kmmfd7LHwj8DrFTfLkBxh' ],
+      total: 32500000,
+      amount: 32500000,
+      fee: 100000,
+      feePaidByWallet: false,
+      in: [{
+        amount: 51779752264,
+        script: 'OP_HASH160 62fef27bf70f7d1c014459db068b044deef21351 OP_EQUAL',
+        scriptSig: '0014e858f0befcf5519d62d3ac5cc7ff181a29cbc6ab',
+        scriptType: 'scripthash',
+        transaction: '20d3956f6bdecf20a3261ab57a6ccdd4511c224f1f11a2cd8e932072e497ebaa',
+        outputIndex: 1,
+        sequence: 4294967295
+      }],
+      out: [{
+        amount: 32500000,
+        script: 'OP_HASH160 a37a2c166402eeee959d5efd34b6c9ee4f8320e7 OP_EQUAL',
+        scriptType: 'scripthash' }, {
+        amount: 51747152264,
+        script: 'OP_HASH160 01fa18f279af6f4a7e2b4c59fad15e982d257111 OP_EQUAL',
+        scriptType: 'scripthash'
+      }]
+    }
+  }, {
+    hash: 'a6a65b8f577c5f9f9b7e27914fba598fa1cae89e17a37e67727d6b21346858de',
+
+    input: {
+      inputData: {
+        inputExternalAddresses: [ 'mxAGUxWUwiwp8YBp2fdF6NP7EM46h82UM2' ],
+        inputBalance: 48979975,
+        inputOwnedBalance: 0,
+        allInputOwned: false,
+        ins: [{
+          amount: 48979975,
+          script: 'OP_DUP OP_HASH160 b69095f0926b50308abd042951af0eb8ff42f405 OP_EQUALVERIFY OP_CHECKSIG',
+          scriptSig: '3045022100a3c73257ab0ed5adbbe530537a5db21b57756cde1c9bbb449faf382c8567a93e022069ffb5324783ed2bffdfedd008c8dac3d395f51db889457b135195db905f859b01 02eab2aeea2810b546111a29007e1cc75935228f52c63dbd6ccdeaa0f3129d7c1c',
+          scriptType: 'pubkeyhash',
+          transaction: 'ecd081867eaa667607ab3b6dd5fc1c897517acb3b2e32fd633dece96dae6eaef',
+          outputIndex: 1,
+          sequence: 4294967295
+        }]
+      },
+      outputData: {
+        outputExternalAddresses: [ 'miT9f6gsBYd2gaGjb34X8VJBRF8n8vhyuj' ],
+        outputBalance: 48960535,
+        outputOwnedBalance: 50000,
+        outs: [{
+          amount: 50000,
+          script: 'OP_HASH160 11f76f9e3ac76076a11e3da93a0e114bcf87054e OP_EQUAL',
+          scriptType: 'scripthash' }, {
+          amount: 48910535,
+          script: 'OP_DUP OP_HASH160 203032dfca01bae143e011f26cdd6091822e0bcd OP_EQUALVERIFY OP_CHECKSIG',
+          scriptType: 'pubkeyhash'
+        }]
+      }
+    },
+
+    output: {
+      direction: 'in',
+      peers: [ 'mxAGUxWUwiwp8YBp2fdF6NP7EM46h82UM2' ],
+      total: 50000,
+      amount: 50000,
+      fee: 19440,
+      feePaidByWallet: false,
+      in: [{
+        amount: 48979975,
+        script: 'OP_DUP OP_HASH160 b69095f0926b50308abd042951af0eb8ff42f405 OP_EQUALVERIFY OP_CHECKSIG',
+        scriptSig: '3045022100a3c73257ab0ed5adbbe530537a5db21b57756cde1c9bbb449faf382c8567a93e022069ffb5324783ed2bffdfedd008c8dac3d395f51db889457b135195db905f859b01 02eab2aeea2810b546111a29007e1cc75935228f52c63dbd6ccdeaa0f3129d7c1c',
+        scriptType: 'pubkeyhash',
+        transaction: 'ecd081867eaa667607ab3b6dd5fc1c897517acb3b2e32fd633dece96dae6eaef',
+        outputIndex: 1,
+        sequence: 4294967295
+      }],
+      out: [{
+        amount: 50000,
+        script: 'OP_HASH160 11f76f9e3ac76076a11e3da93a0e114bcf87054e OP_EQUAL',
+        scriptType: 'scripthash' }, {
+        amount: 48910535,
+        script: 'OP_DUP OP_HASH160 203032dfca01bae143e011f26cdd6091822e0bcd OP_EQUALVERIFY OP_CHECKSIG',
+        scriptType: 'pubkeyhash'
+      }]
+    }
+  }]
+}
+
 module.exports = {
   hexToTransaction,
   inputs,
   outputs,
+  parseTransactionIO,
   isAddressOwned,
   NETWORK
 }

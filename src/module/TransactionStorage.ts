@@ -93,7 +93,7 @@ export default class TransactionStorage {
 
     // 3. parse the transaction and save in cache
     const parsedTransaction = parseTransaction(transactionData,
-      this._isAddressOwned) // TODO: implement isAddressOwned()
+      this._isAddressOwned)
     this._putTransaction(Object.assign({}, parsedTransaction)) // write in cache
 
     return parsedTransaction

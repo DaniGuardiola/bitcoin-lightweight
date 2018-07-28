@@ -46,6 +46,13 @@ export class Wallet extends EventEmitter implements IWallet {
   private _balance: number
   private _bip32Wallet: BIP32Wallet
 
+  /**
+   * Emitted once the class has been initialized and
+   * all the data has been downloaded and processed
+   * @event
+   */
+  static EVENT_READY: 'ready' = 'ready'
+
   // ----------------
   // constructor
 
@@ -128,29 +135,52 @@ export class Wallet extends EventEmitter implements IWallet {
 
   // utils
 
+  /**
+   * Util that converts bitcoin units
+   *
+   * @example
+   * ```typescript
+   *
+   * const satoshis = Wallet.convert(1, 'bitcoin').to('satoshis')
+   * console.log(satoshis.value) // 100000000
+   *
+   * const bits = satoshis.to('bits') // you can convert again
+   * console.log(bits.value) // 1000000
+   * ```
+   *
+   * @param n Amount to convert
+   * @param unit Initial unit
+   */
   public static convert (n: number, unit: string): IAmount {
     return convert(n, unit)
   }
 
   // lifecycle
 
+  /**
+   * Returns a promise that is resolved when the instance
+   * is done initializing
+   */
   public async ready (): Promise<void> {
     if (!this._initialized) return this._initializationPromise
   }
 
   // data getters
 
+  /** Returns a list of the current transactions */
   public getTransactions (): ITransaction[] {
     this._ensureInitialized()
     return this._bip32Wallet.getTransactions()
   }
 
+  /** Returns the next unused external address */
   public getReceiveAddress (): string {
     // TODO: rotate in each call?
     return this._bip32Wallet.mainAccount.getUnusedAddress()
   }
 
   // TODO
+  /** Returns the current balance */
   public getBalance (): number {
     return 6
   }

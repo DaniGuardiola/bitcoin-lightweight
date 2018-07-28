@@ -23,7 +23,7 @@ export default class RawTransactionStorage {
   }
 
   public _putRawTransaction (rawTransaction: IRawTransaction, hash: string): void {
-    if (this._getRawTransaction(hash)) throw new Error(`Raw transaction already exists in storage! ${hash}`)
+    if (this._getRawTransaction(hash)) return console.warn(`Raw transaction already exists in storage! ${hash}`)
     const storedRawTransaction: IStoredRawTransaction = Object.assign({}, rawTransaction, { hash })
     this._rawTransactions.push(storedRawTransaction)
   }

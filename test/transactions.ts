@@ -1,20 +1,20 @@
-/* eslint-env mocha */
-const chai = require('chai')
+import * as chai from 'chai'
 chai.use(require('chai-as-promised'))
 
-const tx = require('../dist/node/lib/transactions')
+import * as tx from '../src/lib/transactions'
 
-const FIXTURES = require('./fixtures/transactions')
+import * as FIXTURES from './fixtures/transactions'
 
 chai.should()
 
-const shorten = (string, length) =>
-  `${string.substr(0, length)}${string.length <= length ? '' : '...'}`
+const shorten = (str, length) =>
+  `${str.substr(0, length)}${str.length <= length ? '' : '...'}`
 
 describe('transactions', () => {
   describe('parseTransactionHex', () => {
     const fixtures = FIXTURES.hexToTransaction
-    describe('correctly parses hex-serialized transactions', () => {
+
+    describe('pass', () => {
       fixtures.pass.forEach(fixture => {
         it(shorten(fixture.input.toString(), 35), () => {
           const { input, output } = fixture
@@ -24,7 +24,7 @@ describe('transactions', () => {
       })
     })
 
-    describe('fails to parse malformed hex-serialized transactions', () => {
+    describe('fail', () => {
       fixtures.fail.forEach(fixture => {
         it(shorten(fixture.toString(), 35), () => {
           (() => tx.parseTransactionHex(fixture)).should.throw()
@@ -33,12 +33,13 @@ describe('transactions', () => {
     })
   })
 
-  // TODO: fail examples
+  // TODO: fail examples & more pass examples
   describe('parseInputs', () => {
     const fixtures = FIXTURES.inputs
     const isAddressOwned = FIXTURES.isAddressOwned
     const network = FIXTURES.NETWORK
-    describe('correctly parses inputs', () => {
+
+    describe('pass', () => {
       fixtures.pass.forEach(fixture => {
         it(`tx: ${fixture.txHash}`, () => {
           const { input, output } = fixture
@@ -52,12 +53,13 @@ describe('transactions', () => {
     })
   })
 
-  // TODO: fail examples
+  // TODO: fail examples & more pass examples
   describe('parseOutputs', () => {
     const fixtures = FIXTURES.outputs
     const isAddressOwned = FIXTURES.isAddressOwned
     const network = FIXTURES.NETWORK
-    describe('correctly parses outputs', () => {
+
+    describe('pass', () => {
       fixtures.pass.forEach(fixture => {
         it(`tx: ${fixture.txHash}`, () => {
           const { input, output } = fixture
@@ -71,7 +73,19 @@ describe('transactions', () => {
     })
   })
 
-  describe('parseTransactionIO', () => {}) // TODO
+  describe('parseTransactionIO', () => {
+    const fixtures = FIXTURES.parseTransactionIO
+
+    describe('pass', () => {
+      fixtures.pass.forEach(fixture => {
+        it(shorten(fixture.hash, 35), () => {
+          const { input: { inputData, outputData }, output } = fixture
+          const result = tx.parseTransactionIO(inputData, outputData)
+          output.should.deep.equal(result)
+        })
+      })
+    })
+  }) // TODO
   describe('parseTransaction', () => {}) // TODO
   describe('retrieveTransactionData', async () => {}) // TODO
 })

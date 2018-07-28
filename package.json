@@ -2,7 +2,7 @@
   "name": "bitcoin-lightweight",
   "version": "0.0.1",
   "description": "Lightweight Bitcoin electrum wallet module, with BIP49, SPV, events and a friendly high level interface",
-  "main": "dist/node/main.js",
+  "main": "dist/node/wallet.js",
   "repository": "git@gitlab.com:altruist-projects/fairwallet-lib.git",
   "author": "Dani Guardiola",
   "license": "MIT",
@@ -12,7 +12,9 @@
     "@types/bitcoinjs-lib": "^3.4.0",
     "@types/bluebird": "^3.5.5",
     "@types/bluebird-global": "^3.5.6",
+    "@types/chai": "^4.1.4",
     "@types/joi": "^13.4.0",
+    "@types/mocha": "^5.2.5",
     "@types/node": "^10.5.3",
     "chai": "^4.1.2",
     "chai-as-promised": "^7.1.1",
@@ -20,35 +22,59 @@
     "npm-check": "^5.7.0",
     "nyc": "^12.0.2",
     "pre-commit": "^1.2.2",
+    "source-map-support": "^0.5.6",
     "standard": "^11.0.1",
+    "ts-node": "^7.0.0",
     "tslint": "^5.11.0",
     "tslint-config-standard": "^7.1.0",
     "typedoc": "^0.11.1",
     "typescript": "^2.8.0"
   },
   "scripts": {
-    "build-node": "rm -rf dist/node && tsc -p ./ && cp -r src/tmp dist/node/",
-    "build-browser": "npm run build-node -s && rm -rf dist/browser && mkdir -p dist/browser && browserify --node dist/node/main.js > dist/browser/bundle.js",
-    "build": "npm run build-browser -s",
+    "build:node": "rm -rf dist/node && tsc -p ./ && cp -r src/tmp dist/node/",
+    "build:browser": "rm -rf dist/browser && mkdir -p dist/browser && browserify --node dist/node/wallet.js > dist/browser/bundle.js",
+    "build": "npm run build:browser -s && npm run build:browser -s",
     "lint": "tslint -p .",
-    "test": "nyc --check-coverage --lines 0 mocha",
-    "test-watch": "mocha --watch",
-    "check-security": "npm audit",
-    "check-deps": "npm-check -pi bitcoinjs-lib",
+    "test": "rm -rf coverage && nyc mocha",
+    "test:watch": "mocha --watch --watch-extensions ts",
+    "check:security": "npm audit",
+    "check:deps": "npm-check -pi bitcoinjs-lib",
     "coverage": "nyc check-coverage --lines 90",
     "coverage-report": "nyc report --reporter html --report-dir coverage",
-    "clean-docs": "rm -rf docs",
-    "docs": "npm run clean-docs -s && typedoc --out docs src"
+    "clean:docs": "rm -rf docs",
+    "docs": "npm run clean:docs -s && typedoc --exclude ./src/module/*.ts ./src/data/*.ts --excludeNotExported --excludePrivate --out docs src"
   },
   "pre-commit": [
     "lint",
-    "build",
+    "build:node",
     "test",
-    "clean-docs",
-    "check-deps",
+    "clean:docs",
+    "check:deps",
     "docs",
-    "check-security"
+    "check:security"
   ],
+  "nyc": {
+    "extension": [
+      ".ts"
+    ],
+    "report-dir": "./coverage",
+    "include": "src",
+    "exclude": [
+      "dist/**",
+      "**/*.d.ts",
+      "test/**/*.ts",
+      "src/tmp",
+      "src/data"
+    ],
+    "require": [
+      "ts-node/register"
+    ],
+    "reporter": [
+      "html",
+      "text"
+    ],
+    "temp-directory": "./coverage/.nyc_output"
+  },
   "dependencies": {
     "big.js": "^5.1.2",
     "bip39": "^2.5.0",

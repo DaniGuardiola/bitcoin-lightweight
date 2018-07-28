@@ -1,6 +1,6 @@
 import * as $ from '../data/settings'
 
-import { IAddressTransaction, getElectrumP2shID, hdNodeToBIP49Address } from '../lib/addresses'
+import { IAddressTransaction, addressToElectrumP2shID, hdNodeToBIP49Address } from '../lib/addresses'
 
 import * as bitcoin from 'bitcoinjs-lib'
 
@@ -30,6 +30,6 @@ export default class Address implements IAddress {
     this.status = null
     this.history = []
     this.balance = 0
-    this.electrumID = getElectrumP2shID(this.id, network)
+    this.electrumID = addressToElectrumP2shID(this.id, network)
   }
 }

@@ -4,9 +4,9 @@
     "target": "es5",
     "rootDir": "./src",
     "outDir": "./dist/node",
-    "noImplicitAny": false,
-    "sourceMap": false,
-    "removeComments": false,
+    "noImplicitAny": false, // temporal workaround for Joi
+    "sourceMap": true,
+    "removeComments": true,
     "moduleResolution": "node",
     "strict": true,
     "lib": ["es6"],
