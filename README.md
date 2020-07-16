@@ -2,13 +2,11 @@
 
 A friendly lightweight Bitcoin wallet written in typescript
 
-# Status
+> **IMPORTANT!** This module was abandoned even before an alpha release was ready. It has untested code and missing features, and is most likely full of security issues. Do **NOT** use this. Specially in production. Your bitcoins, or your users' bitcoins **will be stolen or lost**.
+>
+> That said, this was a project I worked on for quite a while a few years ago. It was really interesting and helped me learn a lot about bitcoin and cryptocurrency in general.
 
-*IMPORTANT: DO NOT USE IN PRODUCTION*
-
-This module is a work in progress and is still lacking many features and unit/integration tests. An alpha version will be released soon.
-
-# Features
+## Features
 
 -   BIP49 key derivation, with external and change addresses
 -   BIP39 seed (mnemonic phrase) generation or import with optional passphrase
@@ -21,7 +19,7 @@ This module is a work in progress and is still lacking many features and unit/in
 -   Storage-friendly: a normalized way to save and restore the state of the JavaScript class to load your app or service fast
 -   Really easy to use and high level API, so you can focus on building your own great user interface or API
 
-# Tech stack
+## Tech stack
 
 - [Typescript](https://www.typescriptlang.org/) codebase (more security, faster development, less bugs!)
 - [BitcoinJS](https://github.com/bitcoinjs/bitcoinjs-lib/) module for blockchain logic (heavily tested and powerful library)
@@ -29,7 +27,7 @@ This module is a work in progress and is still lacking many features and unit/in
 - [ElectrumX](https://electrumx.readthedocs.io/en/latest/) servers as backend (socket and websocket connections with TLS supported)
 - [electrum-client](https://github.com/DaniGuardiola/node-electrum-client) module to communicate with electrumx servers (written in typescript, maintained by us)
 
-# Usage
+## Usage
 
 ```js
 import { Wallet } from 'bitcoin-lightweight'
@@ -44,10 +42,10 @@ const app = async () {
 
   const bitcoinBalance = wallet.getBalance()    // obtain wallet balance in bitcoin
 
-  const euroBalance = wallet.getBalance()       // obtain balance in euro
+  wallet.getBalance({ currency: 'EUR' })        // obtain balance in euro
   const txs = wallet.getTransactions()          // obtain transactions
-  await wallet.send(10, '3b2re3n4vvbbnfndm4b3m1s')    // send some bitcoin
-  wallet.receive()                              // get last unused address
+  await wallet.send(10, '3b2re3n4vdm4b3...')    // send some bitcoin
+  const address = wallet.receive()              // get last unused address
 }
 
 app()
