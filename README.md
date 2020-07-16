@@ -1,6 +1,6 @@
 # bitcoin-lightweight
 
-A friendly lightweight Bitcoin wallet written in typescript
+A friendly and lightweight Bitcoin wallet written in typescript
 
 > **IMPORTANT!** This module was abandoned even before an alpha release was ready. It has untested code and missing features, and is most likely full of security issues. Do **NOT** use this. Specially in production. Your bitcoins, or your users' bitcoins **will be stolen or lost**.
 >
